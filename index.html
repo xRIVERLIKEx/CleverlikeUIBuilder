@@ -734,6 +734,19 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
 }
 @media (max-width: 1100px) { body { overflow: auto; } .ws { height: auto; } .ws-layout, .ws-design, .ws-export { grid-template-columns: 1fr !important; } }
 .ws .pane > header > .small-label.muted { display: none; } /* hints live in the header tooltip */
+/* direct manipulation on the layout stage */
+.stage-inner canvas:not(.overlay) { touch-action: none; user-select: none; -webkit-user-select: none; }
+body.stage-dragging, body.stage-dragging * { user-select: none !important; -webkit-user-select: none !important; }
+
+/* hierarchy: eye toggle (preview-only visibility) */
+.trow .teye { all: unset; flex: none; width: 22px; height: 20px; display: grid; place-items: center; border-radius: 4px; color: var(--muted); cursor: pointer; margin-left: auto; opacity: 0; }
+.trow .teye svg { width: 15px; height: 15px; }
+.trow:hover .teye, .trow[aria-selected="true"] .teye, .trow .teye.off, .trow .teye:focus-visible { opacity: 1; }
+.trow .teye:hover { background: var(--hover); color: var(--text, inherit); }
+.trow .teye.off { color: var(--accent); }
+.trow .teye:focus-visible { outline: 2px solid var(--accent); }
+.trow.t-hidden .tname, .trow.t-hidden .tkind, .trow.t-hidden .ticon, .trow.t-inherit-hidden .tname, .trow.t-inherit-hidden .tkind, .trow.t-inherit-hidden .ticon { opacity: .45; }
+#btn-showall { margin-left: 8px; }
 
 </style>
 </head>
@@ -791,7 +804,7 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
     <div class="ws ws-layout">
       <div class="col">
         <section class="pane tree-pane">
-          <header><div><p class="eyebrow">Hierarchy</p><h2 class="label">Elements in this screen</h2></div><span class="muted small-label">drag to reorder or nest</span></header>
+          <header><div><p class="eyebrow">Hierarchy</p><h2 class="label">Elements in this screen</h2></div><span class="muted small-label" title="In panels, elements lower in the list are drawn in front">drag to reorder or nest · lower = in front</span><button type="button" class="btn small" id="btn-showall" hidden title="Turn every hidden element back on">Show all</button></header>
           <div class="tree" id="tree" role="tree" aria-label="Element hierarchy"></div>
         </section>
         <section class="pane add-pane" data-collapsible="add-pane">
@@ -1984,8 +1997,11 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
   // palette entries (a kind plus preset props)
   const ADDABLE = [
     { kind: "panel" }, { kind: "stack" }, { kind: "stack", label: "Row", props: { dir: "horizontal", h: px(22), gap: 4 } }, { kind: "spacer" },
-    { kind: "image" }, { kind: "image", label: "Divider line", props: { w: FILL, h: px(1) }, art: { art: "rule" } }, { kind: "image", label: "Accent stripe", props: { w: pct(100, 2), h: px(2) }, art: { art: "stripe" } }, { kind: "image", label: "Ornament", props: { w: FIT, h: FIT, anchor: "top_middle", y: -10 }, art: { art: "crest" } }, { kind: "text" },
-    { kind: "title" }, { kind: "body" }, { kind: "close" }, { kind: "buttons" }, { kind: "placed" }, { kind: "button" },
+    { kind: "image" }, { kind: "image", label: "Divider line", props: { w: FILL, h: px(1) }, art: { art: "rule" } }, { kind: "image", label: "Accent stripe", props: { w: pct(100, 2), h: px(2) }, art: { art: "stripe" } }, { kind: "image", label: "Ornament", props: { w: FIT, h: FIT, anchor: "top_middle", y: -24 }, art: { art: "crest" } }, { kind: "text" },
+    { kind: "title" }, { kind: "body" }, { kind: "close" }, { kind: "buttons" },
+    { kind: "buttons", label: "Tile grid", props: { w: FIT, h: FIT, layout: "grid", cols: 3, itemW: 60, itemH: 52, gap: 4, icon: "top", iconSize: 24 },
+      kids: (p) => ["Lesson 1", "Lesson 2", "Lesson 3", "Map", "Quiz", "Settings"].map((l, i) => newNode(p, "button", { props: { label: l, icon: starterAsset(p, ["star", "star", "star", "map", "star", "gear"][i]) } })) },
+    { kind: "placed" }, { kind: "button" },
     { kind: "controls" }, { kind: "toggle" }, { kind: "slider" }, { kind: "dropdown" }, { kind: "input" }, { kind: "submit" },
     { kind: "dialogue" }, { kind: "portrait" }, { kind: "npcbuttons" },
   ];
@@ -2052,16 +2068,43 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
       R.set(im, 4, 4, R.hexToRgba("#ffc2dd")); R.set(im, 5, 4, R.hexToRgba("#ffc2dd"));
       return { type: "sprite", imgs: [im], note: "Decorated frame corner (top-left; mirrored for the other corners)." };
     },
-    crest: () => {
-      const W = 22, H = 16, im = R.create(W, H), g = R.hexToRgba("#febd01"), d = R.hexToRgba("#06204a"), hi = R.hexToRgba("#fff1a8"), pk = R.hexToRgba("#ed287f");
-      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-        const cx = Math.abs(x - (W - 1) / 2), wing = y >= 4 && y <= 9 && cx <= 10 - Math.abs(y - 6.5), shield = y <= 14 && cx <= 6 - Math.max(0, y - 8) * 0.8;
-        if (shield || wing) R.set(im, x, y, g);
-      }
-      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const c = R.get(im, x, y); if (!c[3]) continue; const n = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const q = R.get(im, x + dx, y + dy); return !q || !q[3]; }); if (n) R.set(im, x, y, d); }
-      for (const [x, y] of [[10, 4], [11, 4], [9, 5], [10, 5], [11, 5], [12, 5], [10, 6], [11, 6], [12, 6], [9, 6], [10, 7], [11, 7]]) R.set(im, x, y, pk);
-      R.set(im, 10, 4, hi); for (let x = 8; x <= 13; x++) R.set(im, x, 1, hi);
-      return { type: "sprite", imgs: [im], note: "Ornament (crest) to pin past a frame edge." };
+    crest: () => { // the Cleverlike logo (dome, antennas, spark) as pixel art; original drawing for the starter ornament
+      const pal = {"2": "#6c1c88", "3": "#9a2ea6", "5": "#561470", "E": "#1e7a34", "G": "#b8b020", "K": "#4a4a4a", "L": "#ffd84a", "O": "#f28a12", "R": "#c8141e", "S": "#8a8a92", "Y": "#f2d200", "d": "#7a0a10", "e": "#5ad070", "g": "#7a7414", "h": "#e0dc60", "k": "#121212", "o": "#240a33", "r": "#ff5a4a", "s": "#d4d4d8", "w": "#fff8d0", "y": "#fff3a0"};
+      const rows = [
+        "..................Y.................",
+        "..GG..........Y...Y...Y.........GG..",
+        ".GhGGyy......YY..Y.Y..YY......yGhGG.",
+        ".GGGg..yyyy..Y.Y.Y.Y.Y.Y..yyyy.GGGg.",
+        "..Ggg..RR..yY..Y.Y.Y.Y..Yy..RR..Gg..",
+        "....rRRdd.......Y...Y.......ddRRr...",
+        "..Rrddd.........Y...Y.........dddrR.",
+        "..dd.ggGRR.................RRGgg.dd.",
+        ".....rRRdd.................ddRRr....",
+        "...RrdddG...................GdddrR..",
+        "...dd..ggGRR.............RRGgg..dd..",
+        ".......rRRdd..ooooooooo..ddRRr......",
+        ".....RrdddGoooYYYYYYYYYoooGdddrR....",
+        ".....dd.ggGYYY2Y22222Y2YYYGgg.dd....",
+        "........ogYG22Y22sss22Y22GYgo.......",
+        ".......o3Y3333Y3sOOOS3Y3333Y3o......",
+        "......o3Y33333YsOwLLOSY33333Y3o.....",
+        ".....o33Y3333Y3sOLwLOS3Y3333Y33o....",
+        "....o22Y22222Y2sOLLLOS2Y22222Y22o...",
+        "....o22Y22222Y22SOOOS22Y22222Y22o...",
+        "....o2Y22222Y2222SSS2222Y22222Y2o...",
+        "...o55Y55555Y55555555555Y55555Y55o..",
+        "...o55Y55555Y55555555555Y55555Y55o..",
+        "...o55Y55555Y55555555555Y55555Y55o..",
+        ".KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK.",
+        "kkYYkkkYYkkkYYkkkYYkkkYYkkkYYkkkYYkk",
+        "kYeEYkYeEYkYeEYkYeEYkYeEYkYeEYkYeEYk",
+        "kYEEYkYEEYkYEEYkYEEYkYEEYkYEEYkYEEYk",
+        "kkYYkkkYYkkkYYkkkYYkkkYYkkkYYkkkYYkk",
+        "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk",
+        ".kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk."];
+      const im = R.create(rows[0].length, rows.length);
+      rows.forEach((row, y) => [...row].forEach((ch, x) => { if (pal[ch]) R.set(im, x, y, R.hexToRgba(pal[ch])); }));
+      return { type: "sprite", imgs: [im], note: "Ornament: the Cleverlike logo, to pin past a frame edge." };
     },
   };
   function starterAsset(p, name) {
@@ -2093,6 +2136,7 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
       n.art[part.key] = st ? starterAsset(p, st) : null;
     }
     n.name = uniqueName(p, preset.name || (kind === "button" ? n.props.label : preset.label || k.label));
+    if (typeof preset.kids === "function") n.children = preset.kids(p); // palette presets that come filled (e.g. Tile grid)
     return n;
   }
   /** The art parts a node uses with its current settings (e.g. frame parts only for the Decorated frame style). */
@@ -2150,7 +2194,7 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
           N("buttons", { layout: "list", itemH: 22, icon: "left" }, ["Start lesson", "Lesson map", "Settings"].map((l, i) => N("button", { label: l, icon: starterAsset(p, ["star", "map", "gear"][i]) }))), sp(4)];
       const win = N("window", { w: px(p.type === "modal" ? 250 : 236), bgStyle: "frame", overhang: 2, pad: 4 }, [
         N("stack", { gap: 0 }, content, { label: "Content" }),
-        N("image", { w: FIT, h: FIT, anchor: "top_middle", y: -24 }, [], { label: "Crest", art: { art: "crest" } }),
+        N("image", { w: FIT, h: FIT, anchor: "top_middle", y: -36 }, [], { label: "Crest", art: { art: "crest" } }),
         N("close", { anchor: "top_right", x: 2, y: -2 })], { label: "Window" });
       ensureParts(p, win); win.art.bg = null; return win;
     }
@@ -2253,6 +2297,7 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
     if (p.type === "npc" && nodes.some((n) => n.kind === "portrait" && n.props.mode === "free")) tests.push("Free NPC portrait: check the model's size and position at different GUI scales.");
     for (const n of nodes) { const f = frameInfo(p, n); if (f && Math.abs(f.ch - f.et) > 0) warn(`${n.name}: the frame corner is ${f.ch}px tall but the edge is ${f.et}px thick; make them match so the edge meets the corner.`, n); }
     if (p.density > 1) tests.push(`Pixel density ${p.density}×: check borders keep their thickness in game (nine-slice base_size).`);
+    for (const n of nodes) if (n.hidden) warn(`${n.name} is hidden in the preview (eye icon) but still exported and shown in game.`, n);
     return { errors, warnings, tests };
   }
 
@@ -2391,9 +2436,9 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
     return box;
   }
 
-  function absolute(box, ox = 0, oy = 0, out = []) {
-    box.ax = ox + box.x; box.ay = oy + box.y; out.push(box);
-    for (const k of box.kids) absolute(k, box.ax, box.ay, out);
+  function absolute(box, ox = 0, oy = 0, out = [], hid = false) {
+    box.ax = ox + box.x; box.ay = oy + box.y; box.hidden = hid || !!box.node.hidden; out.push(box); // hidden: eye toggle in the hierarchy (preview only)
+    for (const k of box.kids) absolute(k, box.ax, box.ay, out, box.hidden);
     return out;
   }
   /** Lay out the whole screen. */
@@ -2463,10 +2508,12 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
     R.drawOverInPlace(img, out, Math.round(x * D), Math.round(y * D));
   }
   /** Decorated frame: fill, 4 edges (tiled or stretched), 4 mirrored corners; extends `overhang` px outside the box. */
-  function drawFrame(p, img, D, n, x, y, w, h, cache) {
+  /** part: "all" | "fill" (the centre only) | "edges" (edges + corners; drawn last when the frame is in front of the content) */
+  function drawFrame(p, img, D, n, x, y, w, h, cache, part = "all") {
     const f = B.frameInfo(p, n), A = (id) => B.asset(p, id); if (!f) return;
     const X = x - f.o, Y = y - f.o, W = w + 2 * f.o, H = h + 2 * f.o, tile = n.props.edgeMode === "stretch" ? null : true;
-    if (A(n.art.fill)) drawArt(img, D, A(n.art.fill), "default", X + Math.floor(f.et / 2), Y + Math.floor(f.et / 2), W - 2 * Math.floor(f.et / 2), H - 2 * Math.floor(f.et / 2), cache);
+    if (part !== "edges" && A(n.art.fill)) drawArt(img, D, A(n.art.fill), "default", X + Math.floor(f.et / 2), Y + Math.floor(f.et / 2), W - 2 * Math.floor(f.et / 2), H - 2 * Math.floor(f.et / 2), cache);
+    if (part === "fill") return;
     const e = A(n.art.edge), c = A(n.art.corner);
     drawVariant(img, D, e, "t", X + f.cw, Y, W - 2 * f.cw, f.et, cache, tile && "x");
     drawVariant(img, D, e, "b", X + f.cw, Y + H - f.et, W - 2 * f.cw, f.et, cache, tile && "x");
@@ -2496,9 +2543,12 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
 
   /** Render the project. opts: { W, H, scale (screen px per texture px), hot: {id, cell, pressed}, sel: nodeId, ghost: bool }
    *  Returns { canvas, lay, scale } — canvas is (W*D*scale) wide. */
+  const FREE_H = 1.013, FREE_TOP = 0.408, FREE_DX = -0.022; // free NPC model vs its message_model control (see render)
   function render(p, opts = {}) {
     const W = opts.W || 427, H = opts.H || 240, D = p.density || 1, S = opts.scale || 2;
-    const lay = layout(p, W, H), img = R.create(W * D, H * D), texts = [], cache = opts.cache || new Map();
+    const lay = layout(p, W, H), cache = opts.cache || new Map();
+    // drawing is split into segments at each NPC model, so later elements in the hierarchy draw over the model (front-to-back = tree order)
+    let img = R.create(W * D, H * D), texts = []; const segs = [], lateFrames = []; // frames set "in front" draw after everything else
     // the world behind: Minecraft dims it under every screen (a bit more for forms), plus any extra dim set on a full-screen root
     const extraDim = p.root.props.mode === "screen" ? Number(p.root.props.dim) || 0 : 0, baseDim = p.type === "npc" ? 0.35 : 0.5;
     const worldDim = 1 - (1 - baseDim) * (1 - extraDim), models = [];
@@ -2525,9 +2575,11 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
     };
 
     for (const b of lay.flat) {
+      if (b.hidden) continue;
       const n = b.node, P = n.props, x = b.ax, y = b.ay;
       if (n.kind === "window" || n.kind === "panel" || n.kind === "stack") {
-        if (P.bgStyle === "frame") drawFrame(p, img, D, n, x, y, b.w, b.h, cache); else if (n.art.bg) drawArt(img, D, A(n.art.bg), "default", x, y, b.w, b.h, cache);
+        if (P.bgStyle === "frame" && P.frameFront) { drawFrame(p, img, D, n, x, y, b.w, b.h, cache, "fill"); lateFrames.push(b); }
+        else if (P.bgStyle === "frame") drawFrame(p, img, D, n, x, y, b.w, b.h, cache); else if (n.art.bg) drawArt(img, D, A(n.art.bg), "default", x, y, b.w, b.h, cache);
         continue;
       }
       if (n.kind === "image") { drawArt(img, D, A(n.art.art), "default", x, y, b.w, b.h, cache); continue; }
@@ -2588,72 +2640,88 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
         if (n.art.bg) drawArt(img, D, A(n.art.bg), "default", x, y, b.w, b.h, cache);
         else if (P.mode !== "free") { fillRect(img, D, x, y, b.w, b.h, "#111111"); fillRect(img, D, x + 1, y + 1, b.w - 2, b.h - 2, "#4a4a4a"); } // the game's grey portrait window
         if (opts.npcSkin && G.CLBModel3D) // unlocked = what the game draws today: fixed slight turn, head straight; locked = the pose the pack forces in game
-          models.push({ x, y, w: b.w, h: b.h, free: P.mode === "free", z: (Number(P.zoom) || 100) / 100, px: Number(P.panX) || 0, py: Number(P.panY) || 0,
+          models.push({ id: n.id, x, y, w: b.w, h: b.h, free: P.mode === "free", z: (Number(P.zoom) || 100) / 100, px: Number(P.panX) || 0, py: Number(P.panY) || 0,
             yaw: P.lockPose ? P.poseYaw ?? 15 : 15, head: P.lockPose ? [Number(P.headYaw) || 0, Number(P.headPitch) || 0] : [0, 0] });
+        if (models.length) { segs.push({ img, texts, models: models.splice(0) }); img = R.create(W * D, H * D); texts = []; }
         else if (P.mode === "free") npcFigure(img, D, x - b.w * 0.1, y - b.h * 0.05, b.w * 1.2, b.h * 1.1, true); else npcFigure(img, D, x, y, b.w, b.h);
         continue;
       }
     }
 
-    // to canvas at S screen px per texture px, then text at the matching GUI scale
-    const g = S * D, ui = R.toCanvas(img, S); // screen px per GUI px
-    let canvas = ui;
-    if (opts.bgImage) { // the world screenshot behind, at full resolution, then the dim, then the UI pixels on top
-      canvas = document.createElement("canvas"); canvas.width = ui.width; canvas.height = ui.height;
-      const bx = canvas.getContext("2d"), iw = opts.bgImage.naturalWidth || opts.bgImage.width, ih = opts.bgImage.naturalHeight || opts.bgImage.height, k = Math.max(canvas.width / iw, canvas.height / ih);
-      bx.imageSmoothingEnabled = true; bx.drawImage(opts.bgImage, (canvas.width - iw * k) / 2, (canvas.height - ih * k) / 2, iw * k, ih * k);
-      bx.fillStyle = `rgba(0,0,0,${worldDim})`; bx.fillRect(0, 0, canvas.width, canvas.height);
-      bx.imageSmoothingEnabled = false; bx.drawImage(ui, 0, 0);
+    // to canvas at S screen px per texture px; per segment: UI pixels, then its text, then its NPC model
+    segs.push({ img, texts, models: models.splice(0) });
+    if (lateFrames.length) { img = R.create(W * D, H * D); for (const b of lateFrames) drawFrame(p, img, D, b.node, b.ax, b.ay, b.w, b.h, cache, "edges"); segs.push({ img, texts: [], models: [] }); }
+    const g = S * D; // screen px per GUI px
+    const canvas = document.createElement("canvas"); canvas.width = W * D * S; canvas.height = H * D * S;
+    const ctx = canvas.getContext("2d"); lay.models = [];
+    if (opts.bgImage) { // the world screenshot behind, at full resolution, then the dim
+      const iw = opts.bgImage.naturalWidth || opts.bgImage.width, ih = opts.bgImage.naturalHeight || opts.bgImage.height, k = Math.max(canvas.width / iw, canvas.height / ih);
+      ctx.imageSmoothingEnabled = true; ctx.drawImage(opts.bgImage, (canvas.width - iw * k) / 2, (canvas.height - ih * k) / 2, iw * k, ih * k);
+      ctx.fillStyle = `rgba(0,0,0,${worldDim})`; ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-    const ctx = canvas.getContext("2d");
     ctx.textBaseline = "top"; ctx.imageSmoothingEnabled = false;
-    // NPC models, rendered from the real geometry + skin at screen resolution (framed: 150% tall and clipped, like message_model_window)
-    for (const m of models) {
-      const pw = Math.max(8, Math.round(m.w * g)), ph = Math.max(8, Math.round(m.h * g)), key = `model|${pw}x${ph}|${m.free}|${m.yaw}|${m.head}|${m.z}|${m.px}|${m.py}|${g}`;
-      // same maths as the exported message_model: a control Z× the box (×1.5 tall when framed), centred, nudged by the pan
-      const M = m.free ? Math.round(Math.max(pw, ph) * Math.max(1, m.z)) : 0; // free models may spill past the box
-      let mc = opts.cache && opts.cache.get(key);
-      if (!mc) {
-        const hm = m.free ? ph * 0.98 * m.z : ph * 1.1 * m.z, top = m.free ? ph / 2 + (ph * m.z) / 2 - hm + m.py * g : ph / 2 - 0.51 * ph * m.z + m.py * g;
-        const im = G.CLBModel3D.render(opts.npcGeo || G.CLBAssets.npcGeo, opts.npcSkin, pw + 2 * M, ph + 2 * M, { height: hm, top: top + M, dx: m.px * g, yaw: m.yaw, pitch: m.free ? 4 : 6, head: m.head });
-        mc = R.toCanvas(im, 1); if (opts.cache) opts.cache.set(key, mc);
+    for (const seg of segs) {
+      ctx.drawImage(R.toCanvas(seg.img, S), 0, 0);
+      const texts = seg.texts, models = seg.models;
+      for (const t of texts) {
+        const size = 8 * g * t.sc, lines = t.lines || [t.s];
+        ctx.save();
+        if (t.clip) { ctx.beginPath(); ctx.rect(t.clip[0] * g, t.clip[1] * g, t.clip[2] * g, t.clip[3] * g); ctx.clip(); }
+        ctx.font = `${size}px "Pixelify Sans", "Nunito", sans-serif`;
+        lines.forEach((ln, li) => {
+          const lw = textW(ln, t.sc) * g, base = t.x * g;
+          const tx = t.align === "center" ? base + (t.w * g - lw) / 2 : t.align === "right" ? base + t.w * g - lw : base;
+          const ty = (t.y + li * LINE * t.sc) * g;
+          // each glyph is stretched to Minecraft's advance minus the 1px gap, so letters sit as tightly as the game font
+          const draw = (dx, color) => { let cx = tx + dx; ctx.fillStyle = color; for (const ch of ln) { const adv = charW(ch) * t.sc * g, mw = ctx.measureText(ch).width;
+            if (ch !== " " && mw > 0) { const k = Math.max(0.6, Math.min(1.8, (adv - t.sc * g) / mw)); ctx.save(); ctx.translate(cx, ty + dx); ctx.scale(k, 1); ctx.fillText(ch, 0, 0); ctx.restore(); }
+            cx += adv; } };
+          if (t.shadow) draw(g * t.sc, shade(t.color));
+          draw(0, t.color);
+        });
+        ctx.restore();
       }
-      ctx.save(); if (!m.free) { ctx.beginPath(); ctx.rect(m.x * g, m.y * g, pw, ph); ctx.clip(); }
-      ctx.drawImage(mc, Math.round(m.x * g) - M, Math.round(m.y * g) - M); ctx.restore();
-      if (!m.free) { // Education's immersive reader button sits in the portrait window's bottom-right corner
-        const bs = 18 * g, bx = (m.x + m.w - 2) * g - bs, by = (m.y + m.h - 2) * g - bs, u = g;
-        ctx.fillStyle = "#1e1e1e"; ctx.fillRect(bx, by, bs, bs); ctx.fillStyle = "#d0d0d0"; ctx.fillRect(bx + u, by + u, bs - 2 * u, bs - 2 * u);
-        ctx.fillStyle = "#8b8b8b"; ctx.fillRect(bx + u, by + bs - 3 * u, bs - 2 * u, 2 * u);
-        ctx.fillStyle = "#2b2b2b"; ctx.fillRect(bx + 4 * u, by + 4 * u, 4 * u, 9 * u); ctx.fillRect(bx + 9 * u, by + 4 * u, 3 * u, 9 * u);
-        ctx.fillStyle = "#ffffff"; ctx.fillRect(bx + 5 * u, by + 5 * u, 2 * u, 7 * u); ctx.fillStyle = "#2e7cf6"; ctx.fillRect(bx + 13 * u, by + 8 * u, 2 * u, 5 * u); ctx.fillRect(bx + 15 * u, by + 7 * u, u, 7 * u);
+      // NPC models, rendered from the real geometry + skin at screen resolution (framed: 150% tall and clipped, like message_model_window)
+      for (const m of models) {
+        const pw = Math.max(8, Math.round(m.w * g)), ph = Math.max(8, Math.round(m.h * g)), key = `model|${pw}x${ph}|${m.free}|${m.yaw}|${m.head}|${m.z}|${m.px}|${m.py}|${g}`;
+        // same maths as the exported message_model: a control Z× the box (×1.5 tall when framed), centred, nudged by the pan
+        const M = m.free ? Math.round(Math.max(pw, ph) * Math.max(1, m.z)) : 0; // free models may spill past the box
+        let mc = opts.cache && opts.cache.get(key);
+        if (!mc) {
+          // free: matched to an in-game capture (box 160×201 GUI, zoom 142%): the model is ~1.013× the control's height, its top 0.41 of its
+          // height above the control's centre, and a hair left of centre. Framed: matched earlier against the vanilla portrait window.
+          const hm = m.free ? ph * FREE_H * m.z : ph * 1.1 * m.z, top = m.free ? ph / 2 - FREE_TOP * hm + m.py * g : ph / 2 - 0.51 * ph * m.z + m.py * g;
+          const dx = m.px * g + (m.free ? FREE_DX * hm : 0);
+          const im = G.CLBModel3D.render(opts.npcGeo || G.CLBAssets.npcGeo, opts.npcSkin, pw + 2 * M, ph + 2 * M, { height: hm, top: top + M, dx, yaw: m.yaw, pitch: m.free ? 4 : 6, head: m.head });
+          mc = R.toCanvas(im, 1); mc.bbox = alphaBox(im); if (opts.cache) opts.cache.set(key, mc);
+        }
+        // where the model's pixels are, in GUI px (unclipped), so the stage can drag / scale the model itself
+        if (mc.bbox) lay.models.push({ id: m.id, x: (Math.round(m.x * g) - M + mc.bbox.x) / g, y: (Math.round(m.y * g) - M + mc.bbox.y) / g, w: mc.bbox.w / g, h: mc.bbox.h / g, box: { x: m.x, y: m.y, w: m.w, h: m.h } });
+        ctx.save(); if (!m.free) { ctx.beginPath(); ctx.rect(m.x * g, m.y * g, pw, ph); ctx.clip(); }
+        ctx.drawImage(mc, Math.round(m.x * g) - M, Math.round(m.y * g) - M); ctx.restore();
+        if (!m.free) { // Education's immersive reader button sits in the portrait window's bottom-right corner
+          const bs = 18 * g, bx = (m.x + m.w - 2) * g - bs, by = (m.y + m.h - 2) * g - bs, u = g;
+          ctx.fillStyle = "#1e1e1e"; ctx.fillRect(bx, by, bs, bs); ctx.fillStyle = "#d0d0d0"; ctx.fillRect(bx + u, by + u, bs - 2 * u, bs - 2 * u);
+          ctx.fillStyle = "#8b8b8b"; ctx.fillRect(bx + u, by + bs - 3 * u, bs - 2 * u, 2 * u);
+          ctx.fillStyle = "#2b2b2b"; ctx.fillRect(bx + 4 * u, by + 4 * u, 4 * u, 9 * u); ctx.fillRect(bx + 9 * u, by + 4 * u, 3 * u, 9 * u);
+          ctx.fillStyle = "#ffffff"; ctx.fillRect(bx + 5 * u, by + 5 * u, 2 * u, 7 * u); ctx.fillStyle = "#2e7cf6"; ctx.fillRect(bx + 13 * u, by + 8 * u, 2 * u, 5 * u); ctx.fillRect(bx + 15 * u, by + 7 * u, u, 7 * u);
+        }
       }
-    }
-    for (const t of texts) {
-      const size = 8 * g * t.sc, lines = t.lines || [t.s];
-      ctx.save();
-      if (t.clip) { ctx.beginPath(); ctx.rect(t.clip[0] * g, t.clip[1] * g, t.clip[2] * g, t.clip[3] * g); ctx.clip(); }
-      ctx.font = `${size}px "Pixelify Sans", "Nunito", sans-serif`;
-      lines.forEach((ln, li) => {
-        const lw = textW(ln, t.sc) * g, base = t.x * g;
-        const tx = t.align === "center" ? base + (t.w * g - lw) / 2 : t.align === "right" ? base + t.w * g - lw : base;
-        const ty = (t.y + li * LINE * t.sc) * g;
-        // each glyph is stretched to Minecraft's advance minus the 1px gap, so letters sit as tightly as the game font
-        const draw = (dx, color) => { let cx = tx + dx; ctx.fillStyle = color; for (const ch of ln) { const adv = charW(ch) * t.sc * g, mw = ctx.measureText(ch).width;
-          if (ch !== " " && mw > 0) { const k = Math.max(0.6, Math.min(1.8, (adv - t.sc * g) / mw)); ctx.save(); ctx.translate(cx, ty + dx); ctx.scale(k, 1); ctx.fillText(ch, 0, 0); ctx.restore(); }
-          cx += adv; } };
-        if (t.shadow) draw(g * t.sc, shade(t.color));
-        draw(0, t.color);
-      });
-      ctx.restore();
     }
     return { canvas, lay, g };
+  }
+  /** Bounding box of the non-transparent pixels of an Img (null if empty). */
+  function alphaBox(im) {
+    let x0 = im.w, y0 = im.h, x1 = -1, y1 = -1;
+    for (let y = 0; y < im.h; y++) for (let x = 0; x < im.w; x++) if (im.d[(y * im.w + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    return x1 < 0 ? null : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
   }
   function shade(hex) { const c = R.hexToRgba(hex); return `rgb(${Math.round(c[0] / 4)},${Math.round(c[1] / 4)},${Math.round(c[2] / 4)})`; }
 
   /** Which box / cell is at GUI point (gx, gy)? Deepest first. */
   function hit(lay, gx, gy, scrollY = 0) {
     for (let i = lay.flat.length - 1; i >= 0; i--) {
-      const b = lay.flat[i];
+      const b = lay.flat[i]; if (b.hidden) continue;
       if (gx < b.ax || gy < b.ay || gx >= b.ax + b.w || gy >= b.ay + b.h) continue;
       if (b.cells) {
         const off = b.scroll ? -scrollY : 0;
@@ -2733,7 +2801,15 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
         const def = { type: bg ? "image" : "panel", size: [sz(P.w), sz(P.h)], layer: 1, controls: [] };
         if (bg) def.texture = tex(bg, "default");
         if (n === p.root && P.mode === "screen") { def.size = ["100%", "100%"]; if (Number(P.dim) > 0) def.controls.push({ dim: { type: "image", texture: "textures/ui/White", color: [0, 0, 0], alpha: Math.round(Number(P.dim) * 100) / 100, size: ["100%", "100%"], layer: 0 } }); }
-        if (frame) def.controls.push({ frame: frameDef(n, frame) });
+        if (frame) {
+          const fd = frameDef(n, frame);
+          if (P.frameFront) { // edges + corners above all the content; the centre fill stays behind it
+            const fi = fd.controls.findIndex((c) => c.fill);
+            if (fi >= 0) def.controls.push({ frame_fill: { type: "panel", size: fd.size, layer: 0, controls: [fd.controls.splice(fi, 1)[0]] } });
+            fd.layer = 400;
+          }
+          def.controls.push({ frame: fd });
+        }
         if (P.w.m === "fit") def.size[0] = pad ? `100%c + ${2 * pad}px` : "100%c";
         if (P.h.m === "fit") def.size[1] = pad ? `100%c + ${2 * pad}px` : "100%c";
         const innerDef = { type: k === "stack" ? "stack_panel" : "panel", size: [P.w.m === "fit" ? "100%c" : pad ? `100% - ${2 * pad}px` : "100%", P.h.m === "fit" ? "100%c" : pad ? `100% - ${2 * pad}px` : "100%"], controls: [] };
@@ -2748,12 +2824,19 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
             const a = P.align || "center", anchor = vert ? { start: "top_left", center: "top_middle", end: "top_right" }[a] : { start: "top_left", center: "left_middle", end: "bottom_left" }[a];
             const ref = emit(c, { inStack: true });
             const over = { anchor_from: anchor, anchor_to: anchor };
-            if (main && main.m !== "fit") { const cs = cross ? (cross.m === "fit" ? fitOf(c) : sz(cross)) : "100%"; over.size = vert ? [cs, "100%"] : ["100%", cs]; }
+            if (main && main.m !== "fit") {
+              // a fit-content cross size keeps the element's own size ("default" would stretch an image / plate to the whole row)
+              const own = (ui[c.name] || ui[`${c.name}@common.button`] || {}).size, ci = vert ? 0 : 1;
+              const cs = cross ? (cross.m === "fit" ? (own && own[ci] != null ? own[ci] : fitOf(c)) : sz(cross)) : "100%";
+              over.size = vert ? [cs, "100%"] : ["100%", cs];
+            }
             innerDef.controls.push({ [`${c.name}_slot`]: { type: "panel", size: vert ? ["100%", slotMain] : [slotMain, "100%"], controls: [{ [ref]: over }] } });
           } else {
             const a = c.props.anchor || "center";
             const over = { anchor_from: a, anchor_to: a };
             if (c.props.x || c.props.y) over.offset = [Number(c.props.x) || 0, Number(c.props.y) || 0];
+            // front-to-back = hierarchy order (lower in the list draws on top); steps of 10 so each element's own inner layers stay inside its band
+            if (n.children.length > 1) over.layer = 1 + 10 * i;
             innerDef.controls.push({ [emit(c, {})]: over });
           }
         });
@@ -2778,7 +2861,10 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
         if (plate) { // a plate: art sized to the text (+ padding), the label inside it
           const an = P.align === "right" ? "right_middle" : P.align === "center" ? "center" : "left_middle";
           Object.assign(def, { anchor_from: an, anchor_to: an, offset: [an === "left_middle" ? pp : an === "right_middle" ? -pp : 0, 0] });
-          ui[name] = { type: "image", texture: tex(plate, "default"), layer: 1, size: [P.w.m === "fit" ? `100%c + ${2 * pp}px` : sz(P.w), P.h.m === "fit" ? `100%c + ${2 * pp}px` : sz(P.h)], controls: [{ text: def }] };
+          // a fit-width plate gets the preview text's width in px: in game a label's "default" width inside "100%c" spreads to the parent's width
+          const fitW = () => { const t = String(k === "title" ? p.title : k === "body" ? p.body : P.text || "").replace(/§./g, ""); return Math.max(1, ...t.split("\n").map((l) => G.CLBLayout.textW(l, Number(P.scale) || 1))) + 2 * pp; };
+          if (P.w.m === "fit") def.size[0] = `100% - ${2 * pp}px`;
+          ui[name] = { type: "image", texture: tex(plate, "default"), layer: 1, size: [P.w.m === "fit" ? fitW() : sz(P.w), P.h.m === "fit" ? `100%c + ${2 * pp}px` : sz(P.h)], controls: [{ text: def }] };
         } else ui[name] = def;
         return `${name}@${REF(name)}`;
       }
@@ -3166,8 +3252,10 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
   async function buildPacks(p) {
     const v = [p.version[0], p.version[1], p.build || 0], base = clean(p.name);
     const RPN = `${base} RP`, BPN = `${base} BP`, rp = {}, bp = {}, J = (o) => JSON.stringify(o, null, 2);
+    // folder names stay put; the label only changes what Minecraft's pack list shows (so you can tell copies apart)
+    const label = String(p.packLabel || "").trim(), lab = label ? ` · ${label}` : "";
     const id = (k) => stableUuid(`${p.id}:${k}`);
-    rp["manifest.json"] = J({ format_version: 2, header: { name: RPN, description: `${p.name}: custom ${B.TYPES[p.type].label} (Cleverlike UI Builder)`, uuid: await id("rp"), version: v, min_engine_version: MIN_ENGINE },
+    rp["manifest.json"] = J({ format_version: 2, header: { name: RPN + lab, description: `${p.name}${lab}: custom ${B.TYPES[p.type].label} (Cleverlike UI Builder)`, uuid: await id("rp"), version: v, min_engine_version: MIN_ENGINE },
       modules: [{ type: "resources", uuid: await id("rp-mod"), version: v }] });
     for (const [path, obj] of Object.entries(C.compile(p))) rp[path] = J(obj);
     for (const [path, obj] of Object.entries(C.poseFiles(p))) rp[path] = J(obj); // optional NPC portrait pose lock
@@ -3189,7 +3277,7 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
     rp["clui_builder_project.json"] = J({ format: B.FORMAT, note: "Open the .cluib project in UI Builder to edit; this file only records where the pack came from.", id: p.id, name: p.name, type: p.type, namespace: p.namespace });
 
     const s = S.script(p);
-    bp["manifest.json"] = J({ format_version: 2, header: { name: BPN, description: `${p.name}: script + test item (Cleverlike UI Builder)`, uuid: await id("bp"), version: v, min_engine_version: MIN_ENGINE },
+    bp["manifest.json"] = J({ format_version: 2, header: { name: BPN + lab, description: `${p.name}${lab}: script + test item (Cleverlike UI Builder)`, uuid: await id("bp"), version: v, min_engine_version: MIN_ENGINE },
       modules: [{ type: "data", uuid: await id("bp-data"), version: v }, { type: "script", language: "javascript", uuid: await id("bp-script"), version: v, entry: "scripts/main.js" }],
       dependencies: [{ uuid: await id("rp"), version: v }, { module_name: "@minecraft/server", version: p.script.server }, { module_name: "@minecraft/server-ui", version: p.script.serverUi }] });
     bp[s.file] = s.code;
@@ -3377,7 +3465,12 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
         k.status === "test" ? h("span", { class: "pill warn" }, "test") : null,
         n === p.root ? null : h("span", { class: "tact" },
           h("button", { type: "button", title: "Duplicate", "aria-label": "Duplicate", onclick: (e) => { e.stopPropagation(); duplicate(n); } }, "⧉"),
-          h("button", { type: "button", title: "Delete (Del)", "aria-label": "Delete", onclick: (e) => { e.stopPropagation(); del(n); } }, "✕")));
+          h("button", { type: "button", title: "Delete (Del)", "aria-label": "Delete", onclick: (e) => { e.stopPropagation(); del(n); } }, "✕")),
+        n === p.root || k.itemOf ? null : h("button", { type: "button", class: "teye" + (n.hidden ? " off" : ""), "aria-pressed": String(!!n.hidden), "aria-label": n.hidden ? `Show ${n.name}` : `Hide ${n.name}`,
+          title: n.hidden ? "Hidden in the preview (still exported). Click to show." : "Hide in the preview (it's still exported)", html: n.hidden ? EYE_OFF : EYE,
+          onclick: (e) => { e.stopPropagation(); setHidden(n, !n.hidden); } }));
+      if (parent && hiddenAncestor(n)) row.classList.add("t-inherit-hidden");
+      if (n.hidden) row.classList.add("t-hidden");
       row.addEventListener("dragstart", (e) => { drag = { type: "node", id: n.id, kind: n.kind }; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", n.name); row.classList.add("dragging"); });
       row.addEventListener("dragend", () => { drag = null; row.classList.remove("dragging"); clearDrop(); });
       row.addEventListener("dragover", (e) => { const z = dropZone(e, row, n); clearDrop(); if (!z) { row.classList.add("drop-no"); return; } e.preventDefault(); row.classList.add("drop-" + z.where); });
@@ -3386,7 +3479,15 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
       row.addEventListener("keydown", (e) => treeKey(e, n));
       box.append(row);
     }
+    updateShowAll();
   }
+  const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>', EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-2.4 3.2M6.6 6.6C3.9 8.4 2 12 2 12s3.6 7 10 7a9.8 9.8 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M3 3l18 18"/></svg>';
+  function hiddenAncestor(n) { let par = B.parentOf(state.p, n.id); while (par) { if (par.hidden) return true; par = B.parentOf(state.p, par.id); } return false; }
+  /** Eye toggle: hides an element (and what's inside it) in the preview only; layout space and the export are unchanged. */
+  function setHidden(n, on) { if (on) n.hidden = true; else delete n.hidden; afterVisibility(); }
+  function showAll() { let any = false; for (const n of B.all(state.p)) if (n.hidden) { delete n.hidden; any = true; } if (any) { afterVisibility(); toast("All elements shown."); } }
+  function afterVisibility() { scheduleSave(); renderTree(); renderStage(); renderProblems(); updateShowAll(); }
+  function updateShowAll() { const b = $("btn-showall"); if (!b || !state.p) return; const n = B.all(state.p).filter((x) => x.hidden).length; b.hidden = !n; b.textContent = n ? `Show all (${n} hidden)` : "Show all"; }
   function hiddenByCollapse(n) { let par = B.parentOf(state.p, n.id); while (par) { if (state.collapsed[par.id]) return true; par = B.parentOf(state.p, par.id); } return false; }
   function clearDrop() { document.querySelectorAll(".trow").forEach((r) => r.classList.remove("drop-before", "drop-after", "drop-inside", "drop-no")); }
   /** Where would the dragged thing land if dropped on row `n`? */
@@ -3413,6 +3514,15 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
     if (e.key === "ArrowUp" && rows[i - 1]) { e.preventDefault(); select(rows[i - 1].dataset.id); document.querySelector(`.trow[data-id="${rows[i - 1].dataset.id}"]`)?.focus(); }
     if ((e.key === "Delete" || e.key === "Backspace") && n !== state.p.root) { e.preventDefault(); e.stopPropagation(); del(n); }
     if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) { const par = B.parentOf(state.p, n.id); if (!par) return; const j = par.children.indexOf(n), to = j + (e.key === "ArrowUp" ? -1 : 2); if (to >= 0 && to <= par.children.length) { B.move(state.p, n.id, par.id, to); commit(); renderLayout(); document.querySelector(`.trow[data-id="${n.id}"]`)?.focus(); } }
+  }
+  /** Front-to-back order among siblings in a panel / window: later in the list = drawn on top. */
+  function arrange(n, how) {
+    const par = n && B.parentOf(state.p, n.id); if (!par || par.kind === "stack") { toast("In a stack the order is the position; drag to reorder."); return; }
+    const j = par.children.indexOf(n), last = par.children.length - 1;
+    const to = { front: last, forward: Math.min(last, j + 1), backward: Math.max(0, j - 1), back: 0 }[how];
+    if (to === j) return;
+    par.children.splice(j, 1); par.children.splice(to, 0, n);
+    commit(); renderLayout(); toast({ front: "Brought to front", forward: "Brought forward", backward: "Sent backward", back: "Sent to back" }[how] + `: ${n.name}`);
   }
   function select(id) {
     const hadFocus = document.activeElement && document.activeElement.closest && document.activeElement.closest("#tree");
@@ -3476,7 +3586,12 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
     const r = stageEl.getBoundingClientRect(), availW = Math.max(200, r.width - 20), availH = Math.max(150, r.height - 20);
     // crop to the window (+ margin) when zoomed in, so the art is drawn big and crisp
     let crop = { x: 0, y: 0, w: W, h: H };
-    if (state.zoom === "window") { const lay = L.layout(p, W, H), m = 12, rb = lay.root; crop = { x: Math.max(0, rb.x - m), y: Math.max(0, rb.y - m), w: Math.min(W, rb.w + 2 * m), h: Math.min(H, rb.h + 2 * m) }; }
+    if (state.freezeCrop) crop = { ...state.freezeCrop }; // keep the view still while an element is dragged
+    else if (state.zoom === "window") { // the window plus anything poking out of it (an ornament above the frame, say)
+      const lay = L.layout(p, W, H), m = 12; let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const b of lay.flat) { if (b.hidden || b.w <= 0 || b.h <= 0) continue; x0 = Math.min(x0, b.ax); y0 = Math.min(y0, b.ay); x1 = Math.max(x1, b.ax + b.w); y1 = Math.max(y1, b.ay + b.h); }
+      x0 = Math.max(0, Math.floor(x0 - m)); y0 = Math.max(0, Math.floor(y0 - m)); x1 = Math.min(W, Math.ceil(x1 + m)); y1 = Math.min(H, Math.ceil(y1 + m));
+      crop = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }; }
     // screen px per texture px: "fit" times the zoom multiplier; drawn at a whole-number scale, then sized exactly with CSS
     const fitG = Math.min(availW / (crop.w * D), availH / (crop.h * D)), target = Math.min(fitG, 2.5 * Math.max(1, Math.floor(fitG))) * mult;
     const S = Math.max(1, Math.min(8, Math.round(target) || 1));
@@ -3492,33 +3607,35 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
     const inner = $("stage-inner"), out = renderStageInto(inner, $("stage"), {});
     inner.innerHTML = ""; const ov = document.createElement("canvas"); ov.className = "overlay"; ov.width = out.canvas.width; ov.height = out.canvas.height;
     inner.append(out.canvas, ov); lastLay = out.lay; lastG = out.g;
-    wireStage(out.canvas, () => lastLay, (hit) => { select(hit.item ? hit.item.id : hit.box.node.id); }, $("stage-status"));
+    wireEdit(out.canvas);
+    wireStage(out.canvas, () => lastLay, (hit) => { if (Date.now() - edDragEnd > 250) select(hit.item ? hit.item.id : hit.box.node.id); }, $("stage-status"));
     drawOverlay(); renderPvView("stage");
   }
   function drawOverlay(hover) {
     const ov = document.querySelector("#stage-inner canvas.overlay"); if (!ov || !lastLay) return;
     const ctx = ov.getContext("2d"), g = lastG, cx = lastLay.crop.x, cy = lastLay.crop.y; ctx.clearRect(0, 0, ov.width, ov.height);
     const box = (b, x, y, w, hh, color, dash, width = 1) => { ctx.setLineDash(dash || []); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.strokeRect((x - cx) * g + 0.5, (y - cy) * g + 0.5, w * g - 1, hh * g - 1); };
-    if ($("pv-outlines").checked) for (const b of lastLay.flat) box(b, b.ax, b.ay, b.w, b.h, "rgba(255,255,255,.2)", [2, 3]);
+    if ($("pv-outlines").checked) for (const b of lastLay.flat) if (!b.hidden) box(b, b.ax, b.ay, b.w, b.h, "rgba(255,255,255,.2)", [2, 3]);
     const s = sel();
     for (const b of lastLay.flat) {
       if (b.node.id === state.selId) box(b, b.ax, b.ay, b.w, b.h, "#ed287f", null, 2);
       if (b.cells) b.cells.forEach((c) => { if (c.item.id === state.selId) box(b, b.ax + c.x, b.ay + c.y - (b.scroll ? state.scrollY : 0), c.w, c.h, "#ed287f", null, 2); });
     }
     if (hover) box(null, hover.x, hover.y, hover.w, hover.h, "rgba(0,174,240,.95)", [4, 3], 2);
-    if (s && s !== state.p.root && !lastLay.flat.some((b) => b.node.id === s.id || (b.cells && b.cells.some((c) => c.item.id === s.id)))) { ctx.setLineDash([]); }
+    drawEditOverlay(ctx, g, cx, cy);
   }
   /** Mouse handling on a preview canvas: hover outline + button states, click to pick, wheel to scroll lists. */
   function wireStage(canvas, getLay, onPick, statusEl, onHover) {
     const toGui = (e) => { const r = canvas.getBoundingClientRect(), c = getLay().crop; return { gx: c.x + ((e.clientX - r.left) / r.width) * c.w, gy: c.y + ((e.clientY - r.top) / r.height) * c.h }; };
     let lastKey = "";
     canvas.addEventListener("mousemove", (e) => {
+      if (edDrag && edDrag.started) return;
       const { gx, gy } = toGui(e), hit = L.hit(getLay(), gx, gy, state.scrollY);
       const key = hit ? hit.box.node.id + ":" + hit.cell : ""; if (key === lastKey) return; lastKey = key;
       const clickable = hit && (hit.cell >= 0 && ["buttons", "npcbuttons", "controls"].includes(hit.box.node.kind) || ["close", "placed", "submit"].includes(hit.box.node.kind));
       const newHot = clickable ? { id: hit.box.node.id, cell: Math.max(0, hit.cell), pressed: false } : null;
       const changed = JSON.stringify(newHot) !== JSON.stringify(state.hot); state.hot = newHot;
-      if (statusEl) statusEl.textContent = hit ? `${hit.item ? (hit.item.props.label || hit.item.name) + " · " + B.KINDS[hit.item.kind].label + " in " + hit.box.node.name : hit.box.node.name + " · " + B.KINDS[hit.box.node.kind].label}  ·  ${Math.round(hit.box.w)}×${Math.round(hit.box.h)} GUI px  ·  click to select` : "Hover an element to see its name; click to select it.";
+      if (statusEl) statusEl.textContent = hit ? `${hit.item ? (hit.item.props.label || hit.item.name) + " · " + B.KINDS[hit.item.kind].label + " in " + hit.box.node.name : hit.box.node.name + " · " + B.KINDS[hit.box.node.kind].label}  ·  ${Math.round(hit.box.w)}×${Math.round(hit.box.h)} GUI px  ·  ${statusEl.id === "stage-status" ? "drag to move · handles resize" : "click to select"}` : statusEl.id === "stage-status" ? "Click to select · drag to move or reorder · drag the handles to resize · arrow keys nudge" : "Hover an element to see its name; click to select it.";
       if (changed) rerenderStage();
       const hv = hit ? (hit.cell >= 0 ? { x: hit.box.ax + hit.box.cells[hit.cell].x, y: hit.box.ay + hit.box.cells[hit.cell].y - (hit.box.scroll ? state.scrollY : 0), w: hit.box.cells[hit.cell].w, h: hit.box.cells[hit.cell].h } : { x: hit.box.ax, y: hit.box.ay, w: hit.box.w, h: hit.box.h }) : null;
       (onHover || drawOverlay)(hv);
@@ -3537,6 +3654,326 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
   function rerenderStage() {
     if (rerenderQueued) return; rerenderQueued = true;
     requestAnimationFrame(() => { rerenderQueued = false; if (state.step === "layout") { const keep = state.hot; renderStage(); state.hot = keep; } else if (state.step === "design") renderMini(); });
+  }
+
+  // ------------------------------------------------------------------ direct manipulation on the layout stage
+  // Drag an element to move it (offset in a panel, order in a stack, or into another container), drag its handles to
+  // resize it, drag a button / control inside its list to reorder. Shift locks an axis (move) or the aspect (corner
+  // resize), Ctrl turns snapping off, Alt drops into the container under the pointer. Esc cancels.
+  let edDrag = null, edDragEnd = 0;
+  const SNAP = 3; // GUI px
+  const FREE_TOP_CLOSEUP = 0.31; // free portrait close-up: head near the top of the box at 180%
+  const isRootScreen = (n) => n === state.p.root && n.props.mode === "screen";
+  const baseOff = (a, inner, size, axis) => axis === "x"
+    ? (/left/.test(a) ? 0 : /right/.test(a) ? inner - size : Math.floor((inner - size) / 2))
+    : (/^top/.test(a) ? 0 : /^bottom/.test(a) ? inner - size : Math.floor((inner - size) / 2));
+  const boxOfId = (lay, id) => lay && lay.flat.find((b) => b.node.id === id);
+  const parentBoxOf = (lay, b) => lay.flat.find((x) => x.kids.includes(b)) || null;
+  function innerOf(lay, pb) {
+    if (!pb) return { x: 0, y: 0, w: lay.W, h: lay.H };
+    const pad = B.padOf(state.p, pb.node); return { x: pb.ax + pad, y: pb.ay + pad, w: pb.w - 2 * pad, h: pb.h - 2 * pad };
+  }
+  const canResize = (n) => n && !isRootScreen(n) && !!boxOfId(lastLay, n.id);
+  const canMove = (n) => n && n !== state.p.root;
+  /** Which resize handle of box b is under the pointer? (corners, edge midpoints, or anywhere along an edge) */
+  function handleAt(b, cxp, cyp, rect, crop, k) {
+    const L0 = rect.left + (b.ax - crop.x) * k, T0 = rect.top + (b.ay - crop.y) * k, R0 = L0 + b.w * k, B0 = T0 + b.h * k;
+    const near = (v, t, r) => Math.abs(v - t) <= r, R = 6;
+    if (cxp < L0 - R || cxp > R0 + R || cyp < T0 - R || cyp > B0 + R) return null;
+    const w = near(cxp, L0, R), e = near(cxp, R0, R), n = near(cyp, T0, R), s = near(cyp, B0, R);
+    if ((n || s) && (w || e)) return (n ? "n" : "s") + (w ? "w" : "e");
+    const midX = near(cxp, (L0 + R0) / 2, R), midY = near(cyp, (T0 + B0) / 2, R), E = 3;
+    if (n && (midX || near(cyp, T0, E))) return "n";
+    if (s && (midX || near(cyp, B0, E))) return "s";
+    if (w && (midY || near(cxp, L0, E))) return "w";
+    if (e && (midY || near(cxp, R0, E))) return "e";
+    return null;
+  }
+  const CURSOR = { n: "ns-resize", s: "ns-resize", e: "ew-resize", w: "ew-resize", nw: "nwse-resize", se: "nwse-resize", ne: "nesw-resize", sw: "nesw-resize" };
+  /** A size spec that gives `size` GUI px: keeps % sizes as % of the parent, everything else becomes px. */
+  function specFor(old, size, avail) {
+    if (old && old.m === "pct" && avail > 0) { const v = Math.max(1, Math.round(((size + (old.d || 0)) / avail) * 100)); return { m: "pct", v, d: old.d || 0 }; }
+    return { m: "px", v: Math.max(1, Math.round(size)) };
+  }
+  const resolved = (spec, avail, fb) => (spec.m === "pct" ? Math.max(0, Math.round((avail * spec.v) / 100 - (spec.d || 0))) : spec.m === "px" ? spec.v : fb);
+
+  /** The NPC model's pixel bounds (GUI px) inside portrait `id`, from the last render. */
+  const modelRect = (id) => (lastLay && lastLay.models && lastLay.models.find((m) => m.id === id)) || null;
+  /** The part of a GUI rect that is on the visible stage (handles stay grabbable when the model spills off screen). */
+  function visibleRect(r, crop) {
+    const x0 = Math.max(r.x, crop.x), y0 = Math.max(r.y, crop.y), x1 = Math.min(r.x + r.w, crop.x + crop.w), y1 = Math.min(r.y + r.h, crop.y + crop.h);
+    return { x: x0, y: y0, w: Math.max(0, x1 - x0), h: Math.max(0, y1 - y0) };
+  }
+  function inRectClient(r, cxp, cyp, rect, crop, k) {
+    const L0 = rect.left + (r.x - crop.x) * k, T0 = rect.top + (r.y - crop.y) * k;
+    return cxp >= L0 && cyp >= T0 && cxp <= L0 + r.w * k && cyp <= T0 + r.h * k;
+  }
+  function modelHandleAt(r, cxp, cyp, rect, crop, k) {
+    r = visibleRect(r, crop); const L0 = rect.left + (r.x - crop.x) * k, T0 = rect.top + (r.y - crop.y) * k, R0 = L0 + r.w * k, B0 = T0 + r.h * k, R = 8;
+    for (const [hx, hy, c] of [[L0, T0, "nw"], [R0, T0, "ne"], [L0, B0, "sw"], [R0, B0, "se"]]) if (Math.abs(cxp - hx) <= R && Math.abs(cyp - hy) <= R) return c;
+    return null;
+  }
+  /** Drag the model (pan) or a corner (zoom; the opposite corner stays put). The model scales about the box centre + pan. */
+  function edModel(d, n, dx, dy, e) {
+    const P = n.props, m0 = d.m0, p0 = d.props0;
+    if (d.type === "model") {
+      if (e.shiftKey) { if (Math.abs(dx) > Math.abs(dy)) dy = 0; else dx = 0; }
+      P.panX = Math.round(p0.panX + dx); P.panY = Math.round(p0.panY + dy);
+      edStatus(`Model: move X ${P.panX}, Y ${-P.panY || 0}  (+ is right / up)  ·  Shift: one axis  ·  Esc: cancel`); return;
+    }
+    const sx = d.hd.includes("e") ? 1 : -1, sy = d.hd.includes("s") ? 1 : -1;
+    const rw = (m0.w + sx * dx) / m0.w, rh = (m0.h + sy * dy) / m0.h;
+    let r = Math.abs(rw - 1) >= Math.abs(rh - 1) ? rw : rh;
+    const z = Math.max(50, Math.min(300, Math.round(p0.zoom * r))); r = z / p0.zoom;
+    const px = m0.box.x + m0.box.w / 2 + p0.panX, py = m0.box.y + m0.box.h / 2 + p0.panY; // pivot
+    const ox = sx > 0 ? m0.x : m0.x + m0.w, oy = sy > 0 ? m0.y : m0.y + m0.h;        // opposite corner
+    P.zoom = z; P.panX = Math.round(p0.panX + (ox - px) * (1 - r)); P.panY = Math.round(p0.panY + (oy - py) * (1 - r));
+    edStatus(`Model zoom ${z}%  ·  move X ${P.panX}, Y ${-P.panY || 0}  ·  Esc: cancel`);
+  }
+  function wireEdit(canvas) {
+    canvas.addEventListener("pointermove", (e) => {
+      if (edDrag) return;
+      const lay = lastLay, s = sel(), rect = canvas.getBoundingClientRect(), k = rect.width / lay.crop.w, sb = s && boxOfId(lay, s.id);
+      const mr = s && modelRect(s.id), mh = mr && modelHandleAt(mr, e.clientX, e.clientY, rect, lay.crop, k); // model corners win over the box's edges
+      if (mh) { canvas.style.cursor = CURSOR[mh]; return; }
+      const hd = sb && canResize(s) && handleAt(sb, e.clientX, e.clientY, rect, lay.crop, k);
+      if (hd) { canvas.style.cursor = CURSOR[hd]; return; }
+      if (mr && inRectClient(mr, e.clientX, e.clientY, rect, lay.crop, k)) { canvas.style.cursor = "move"; return; }
+      const gx = lay.crop.x + (e.clientX - rect.left) / k, gy = lay.crop.y + (e.clientY - rect.top) / k, hit = L.hit(lay, gx, gy, state.scrollY);
+      const id = hit ? (hit.item ? hit.item.id : hit.box.node.id) : null;
+      canvas.style.cursor = !hit || id === state.p.root.id ? "" : id === state.selId ? "move" : "grab";
+    });
+    canvas.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || !state.p) return;
+      const lay = lastLay, rect = canvas.getBoundingClientRect(), k = rect.width / lay.crop.w;
+      const gx = lay.crop.x + (e.clientX - rect.left) / k, gy = lay.crop.y + (e.clientY - rect.top) / k;
+      const s = sel(), sb = s && boxOfId(lay, s.id), smr = s && modelRect(s.id), hd = sb && canResize(s) && !(smr && modelHandleAt(smr, e.clientX, e.clientY, rect, lay.crop, k)) && handleAt(sb, e.clientX, e.clientY, rect, lay.crop, k);
+      const base = { sx: e.clientX, sy: e.clientY, k, crop: { ...lay.crop }, started: false, pointer: e.pointerId };
+      if (hd) {
+        const pb = parentBoxOf(lay, sb), pin = innerOf(lay, pb), par = B.parentOf(state.p, s.id);
+        edDrag = { ...base, type: "resize", id: s.id, hd, b0: { ax: sb.ax, ay: sb.ay, w: sb.w, h: sb.h }, pin, props0: JSON.parse(JSON.stringify(s.props)),
+          free: !!par && par.kind !== "stack", root: s === state.p.root };
+      } else if (s && s.kind === "portrait" && modelRect(s.id) && (modelHandleAt(modelRect(s.id), e.clientX, e.clientY, rect, lay.crop, k) || inRectClient(modelRect(s.id), e.clientX, e.clientY, rect, lay.crop, k))) {
+        const mr = modelRect(s.id), mh = modelHandleAt(mr, e.clientX, e.clientY, rect, lay.crop, k), P = s.props;
+        edDrag = { ...base, type: mh ? "zoom" : "model", id: s.id, hd: mh, m0: { ...mr }, props0: { zoom: Number(P.zoom) || 100, panX: Number(P.panX) || 0, panY: Number(P.panY) || 0 } };
+      } else {
+        const hit = L.hit(lay, gx, gy, state.scrollY); if (!hit) return;
+        if (hit.item && state.selId === hit.box.node.id) { hit.item = null; hit.cell = -1; } // list selected: dragging it moves the whole list
+        const id = hit.item ? hit.item.id : hit.box.node.id;
+        if (id !== state.selId) select(id);
+        const n = B.find(state.p, id); if (!canMove(n)) return;
+        if (hit.item) {
+          const c = hit.box.cells[hit.cell], off = hit.box.scroll ? state.scrollY : 0;
+          edDrag = { ...base, type: "cell", id, b0: { ax: hit.box.ax + c.x, ay: hit.box.ay + c.y - off, w: c.w, h: c.h } };
+        } else {
+          const b = hit.box, pb = parentBoxOf(lay, b), par = B.parentOf(state.p, id);
+          edDrag = { ...base, type: "move", id, b0: { ax: b.ax, ay: b.ay, w: b.w, h: b.h }, pin: innerOf(lay, pb), parentId: par.id, stack: par.kind === "stack",
+            props0: { x: Number(n.props.x) || 0, y: Number(n.props.y) || 0 } };
+          edDrag.skip = new Set(B.all({ root: n }).map((x) => x.id));
+        }
+      }
+      window.addEventListener("pointermove", edMove);
+      window.addEventListener("pointerup", edUp);
+      window.addEventListener("keydown", edKey, true); window.addEventListener("keyup", edKey, true);
+    });
+  }
+  function edStatus(t) { const el = $("stage-status"); if (el) el.textContent = t; }
+  const DWELL = 450; // ms the pointer rests on a container before a drag drops into it
+  function edMove(e) {
+    const d = edDrag; if (!d) return; d.lastEv = e;
+    if (!d.started) { if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 4) return; d.started = true; state.freezeCrop = d.crop; state.hot = null; document.body.classList.add("stage-dragging"); }
+    let dx = (e.clientX - d.sx) / d.k, dy = (e.clientY - d.sy) / d.k;
+    const rect = document.querySelector("#stage-inner canvas:not(.overlay)").getBoundingClientRect();
+    const px = d.crop.x + (e.clientX - rect.left) / d.k, py = d.crop.y + (e.clientY - rect.top) / d.k;
+    const n = B.find(state.p, d.id); if (!n) return;
+    d.guides = []; d.indicator = null; d.target = null; d.ghost = null; d.drop = null;
+    if (d.type === "resize") edResize(d, n, dx, dy, e);
+    else if (d.type === "model" || d.type === "zoom") edModel(d, n, dx, dy, e);
+    else if (d.type === "move") edMoveNode(d, n, dx, dy, px, py, e);
+    else edCell(d, n, dx, dy, px, py);
+    rerenderStage();
+  }
+  function edResize(d, n, dx, dy, e) {
+    const f = d.root ? 2 : 1, H = d.hd; // a centred root window grows on both sides
+    let w = d.b0.w, h = d.b0.h;
+    if (H.includes("e")) w = d.b0.w + dx * f; if (H.includes("w")) w = d.b0.w - dx * f;
+    if (H.includes("s")) h = d.b0.h + dy * f; if (H.includes("n")) h = d.b0.h - dy * f;
+    if (e.shiftKey && H.length === 2) { const rw = w / d.b0.w, rh = h / d.b0.h, r = Math.abs(rw - 1) >= Math.abs(rh - 1) ? rw : rh; w = d.b0.w * r; h = d.b0.h * r; }
+    w = Math.max(1, Math.round(w)); h = Math.max(1, Math.round(h));
+    const P = n.props;
+    if (/[ew]/.test(H)) P.w = specFor(d.props0.w, w, d.pin.w);
+    if (/[ns]/.test(H)) P.h = specFor(d.props0.h, h, d.pin.h);
+    const rw = resolved(P.w || {}, d.pin.w, w), rh = resolved(P.h || {}, d.pin.h, h);
+    if (d.free && !d.root) { // keep the opposite edge where it was
+      const a = P.anchor || "center";
+      if (/[ew]/.test(H)) { const left = d.b0.ax - d.pin.x + (H.includes("w") ? d.b0.w - rw : 0); P.x = Math.round(left - baseOff(a, d.pin.w, rw, "x")); }
+      if (/[ns]/.test(H)) { const top = d.b0.ay - d.pin.y + (H.includes("n") ? d.b0.h - rh : 0); P.y = Math.round(top - baseOff(a, d.pin.h, rh, "y")); }
+    }
+    const fmt = (s) => (s && s.m === "pct" ? `${s.v}%${s.d ? "-" + s.d : ""}` : "");
+    edStatus(`${rw} × ${rh} GUI px${fmt(P.w) || fmt(P.h) ? `  (${[fmt(P.w), fmt(P.h)].filter(Boolean).join(" × ")} of parent)` : ""}  ·  ${e.shiftKey && H.length === 2 ? "proportions locked" : H.length === 2 ? "hold Shift to keep proportions" : ""}  ·  Esc: cancel`);
+  }
+  /** Deepest container under the pointer that can take node n (never n itself or anything inside it). */
+  function dropTarget(d, n, px, py) {
+    for (let i = lastLay.flat.length - 1; i >= 0; i--) {
+      const b = lastLay.flat[i];
+      if (px < b.ax || py < b.ay || px >= b.ax + b.w || py >= b.ay + b.h || d.skip.has(b.node.id) || b.hidden) continue;
+      if (B.KINDS[b.node.kind].container === "free" && B.canHold(b.node, n.kind)) return b;
+    }
+    return null;
+  }
+  /** Insertion index in a stack box for a pointer position (counting the dragged node, as B.move expects). */
+  function stackIndex(sb, px, py, line) {
+    const vert = sb.node.props.dir !== "horizontal"; let idx = 0, at = null;
+    sb.kids.forEach((k, i) => { const mid = vert ? k.ay + k.h / 2 : k.ax + k.w / 2; if ((vert ? py : px) > mid) { idx = i + 1; at = vert ? k.ay + k.h : k.ax + k.w; } });
+    if (at == null) at = sb.kids.length ? (vert ? sb.kids[0].ay : sb.kids[0].ax) : vert ? sb.ay + 2 : sb.ax + 2;
+    const gap = Number(sb.node.props.gap) || 0, pos = idx > 0 && idx < sb.kids.length ? at + gap / 2 : at;
+    if (line) line.push(vert ? { x1: sb.ax, y1: pos, x2: sb.ax + sb.w, y2: pos } : { x1: pos, y1: sb.ay, x2: pos, y2: sb.ay + sb.h });
+    return idx;
+  }
+  function edMoveNode(d, n, dx, dy, px, py, e) {
+    if (e.shiftKey) { if (Math.abs(dx) > Math.abs(dy)) dy = 0; else dx = 0; }
+    const insideParent = px >= d.pin.x && py >= d.pin.y && px < d.pin.x + d.pin.w && py < d.pin.y + d.pin.h;
+    const tgt = dropTarget(d, n, px, py);
+    // leaving the parent drops into a sibling / cousin container; going out into the parent's own ancestors needs Alt
+    // (a stack's children sit tight against its edges, so a drag just past them must keep reordering, not escape)
+    const parNode = B.find(state.p, d.parentId), outward = tgt && parNode && B.isAncestor(tgt.node, parNode);
+    // ...and dropping into a container inside the parent (e.g. back into a stack after dragging something out of it):
+    // hold the pointer still over it for a moment (or press Alt). Once armed it stays armed while over that container.
+    const other = tgt && tgt.node.id !== d.parentId && (e.altKey || !outward); // resting never pulls it out into an ancestor (Alt does)
+    if (!other) { d.hoverId = null; d.armed = null; clearTimeout(d.dwellT); }
+    else if (d.armed !== tgt.node.id) {
+      const still = d.hoverId === tgt.node.id && Math.hypot(e.clientX - d.hx, e.clientY - d.hy) <= 6;
+      if (!still) { d.hoverId = tgt.node.id; d.hoverAt = Date.now(); d.hx = e.clientX; d.hy = e.clientY; clearTimeout(d.dwellT); d.dwellT = setTimeout(() => { if (edDrag === d && d.lastEv) edMove(d.lastEv); }, DWELL + 30); }
+      else if (Date.now() - d.hoverAt >= DWELL) d.armed = tgt.node.id;
+    }
+    const elsewhere = other && (e.altKey || d.armed === tgt.node.id || (!insideParent && !outward));
+    d.ghost = { x: d.b0.ax + dx, y: d.b0.ay + dy, w: d.b0.w, h: d.b0.h };
+    if (elsewhere) {
+      n.props.x = d.props0.x; n.props.y = d.props0.y; d.target = tgt; const line = [];
+      const idx = tgt.node.kind === "stack" ? stackIndex(tgt, px, py, line) : tgt.node.children.length;
+      d.indicator = line[0] || null; d.drop = { into: tgt.node.id, index: idx };
+      edStatus(`Drop into ${tgt.node.name} (${B.KINDS[tgt.node.kind].label})  ·  Esc: cancel`);
+      return;
+    }
+    if (d.stack) { // reorder within the stack
+      const sb = boxOfId(lastLay, d.parentId), line = []; if (!sb) return;
+      const idx = stackIndex(sb, px, py, line); d.indicator = line[0]; d.drop = { into: d.parentId, index: idx, reorder: true };
+      edStatus(`Reorder in ${sb.node.name}  ·  hold still over another container (or Alt) to move it there  ·  Esc: cancel`);
+      return;
+    }
+    // panel / window: change the offset from the anchor, snapping to the parent's edges / centre and to other elements
+    // (line up with an edge or centre, or sit right next to it: above, below, left, right)
+    let left = d.b0.ax - d.pin.x + dx, top = d.b0.ay - d.pin.y + dy;
+    if (!(e.ctrlKey || e.metaKey)) {
+      const T = Math.max(1, SNAP * 2 / d.k), w = d.b0.w, hh = d.b0.h, ax0 = d.pin.x + left, ay0 = d.pin.y + top;
+      const cx = [], cy = []; // [snapped abs position, guide]
+      const pin = d.pin;
+      for (const [c, g] of [[0, 0], [Math.floor((pin.w - w) / 2), pin.w / 2], [pin.w - w, pin.w]]) cx.push([pin.x + c, { x1: pin.x + g, y1: pin.y, x2: pin.x + g, y2: pin.y + pin.h }]);
+      for (const [c, g] of [[0, 0], [Math.floor((pin.h - hh) / 2), pin.h / 2], [pin.h - hh, pin.h]]) cy.push([pin.y + c, { x1: pin.x, y1: pin.y + g, x2: pin.x + pin.w, y2: pin.y + g }]);
+      for (const o of lastLay.flat) {
+        if (d.skip.has(o.node.id) || o.node.id === d.parentId || o.w <= 0 || o.h <= 0 || o.hidden) continue;
+        const vy1 = Math.min(o.ay, ay0), vy2 = Math.max(o.ay + o.h, ay0 + hh), vx1 = Math.min(o.ax, ax0), vx2 = Math.max(o.ax + o.w, ax0 + w);
+        const vl = (gx) => ({ x1: gx, y1: vy1, x2: gx, y2: vy2 }), hl = (gy) => ({ x1: vx1, y1: gy, x2: vx2, y2: gy });
+        cx.push([o.ax, vl(o.ax)], [o.ax + o.w - w, vl(o.ax + o.w)], [o.ax + o.w, vl(o.ax + o.w)], [o.ax - w, vl(o.ax)], [Math.round(o.ax + (o.w - w) / 2), vl(o.ax + o.w / 2)]);
+        cy.push([o.ay, hl(o.ay)], [o.ay + o.h - hh, hl(o.ay + o.h)], [o.ay + o.h, hl(o.ay + o.h)], [o.ay - hh, hl(o.ay)], [Math.round(o.ay + (o.h - hh) / 2), hl(o.ay + o.h / 2)]);
+      }
+      const best = (v, list) => { let r = null; for (const c of list) { const dd = Math.abs(v - c[0]); if (dd <= T && (!r || dd < r.dd)) r = { dd, c }; } return r; };
+      if (dx || !e.shiftKey) { const r = best(ax0, cx); if (r) { left = r.c[0] - pin.x; d.guides.push(r.c[1]); } }
+      if (dy || !e.shiftKey) { const r = best(ay0, cy); if (r) { top = r.c[0] - pin.y; d.guides.push(r.c[1]); } }
+    }
+    const a = n.props.anchor || "center";
+    n.props.x = Math.round(d.props0.x + (left - (d.b0.ax - d.pin.x))); n.props.y = Math.round(d.props0.y + (top - (d.b0.ay - d.pin.y)));
+    d.ghost = null;
+    edStatus(`x ${n.props.x}, y ${-n.props.y || 0} from ${a.replace("_", " ")}  ·  Shift: one axis  ·  Ctrl: no snapping  ·  hold still over a container (or Alt) to drop into it`);
+  }
+  function edCell(d, n, dx, dy, px, py) {
+    d.ghost = { x: d.b0.ax + dx, y: d.b0.ay + dy, w: d.b0.w, h: d.b0.h };
+    let tb = null;
+    for (let i = lastLay.flat.length - 1; i >= 0; i--) { const b = lastLay.flat[i]; if (b.cells && px >= b.ax && py >= b.ay && px < b.ax + b.w && py < b.ay + b.h && B.canHold(b.node, n.kind)) { tb = b; break; } }
+    if (!tb) { edStatus("Drop on a list that can hold this item"); return; }
+    const off = tb.scroll ? state.scrollY : 0, horiz = ["row", "grid"].includes(tb.node.props.layout);
+    let idx = tb.cells.length, line = null;
+    for (let i = 0; i < tb.cells.length; i++) {
+      const c = tb.cells[i], x = tb.ax + c.x, y = tb.ay + c.y - off;
+      if (px >= x && px < x + c.w && py >= y && py < y + c.h) {
+        const after = horiz ? px > x + c.w / 2 : py > y + c.h / 2; idx = i + (after ? 1 : 0);
+        line = horiz ? { x1: after ? x + c.w : x, y1: y, x2: after ? x + c.w : x, y2: y + c.h } : { x1: x, y1: after ? y + c.h : y, x2: x + c.w, y2: after ? y + c.h : y };
+        break;
+      }
+    }
+    if (!line && tb.cells.length) { const c = tb.cells[tb.cells.length - 1], x = tb.ax + c.x, y = tb.ay + c.y - off; line = horiz ? { x1: x + c.w, y1: y, x2: x + c.w, y2: y + c.h } : { x1: x, y1: y + c.h, x2: x + c.w, y2: y + c.h }; }
+    d.indicator = line; d.target = tb; d.drop = { into: tb.node.id, index: idx };
+    edStatus(`Move to position ${Math.min(idx, tb.cells.length) + 1} in ${tb.node.name}  ·  Esc: cancel`);
+  }
+  function edFinish(cancel) {
+    const d = edDrag; edDrag = null; state.freezeCrop = null; if (d) clearTimeout(d.dwellT); document.body.classList.remove("stage-dragging");
+    window.removeEventListener("pointermove", edMove); window.removeEventListener("pointerup", edUp); window.removeEventListener("keydown", edKey, true); window.removeEventListener("keyup", edKey, true);
+    if (!d || !d.started) return;
+    edDragEnd = Date.now();
+    const n = B.find(state.p, d.id);
+    if (cancel || !n) {
+      if (n && d.type === "resize") n.props = d.props0;
+      if (n && d.type === "move") { n.props.x = d.props0.x; n.props.y = d.props0.y; }
+      if (n && (d.type === "model" || d.type === "zoom")) Object.assign(n.props, d.props0);
+      renderStage(); edStatus("Cancelled."); return;
+    }
+    if (d.drop) {
+      const from = B.parentOf(state.p, d.id), fi = from.children.indexOf(n), changed = !(d.drop.into === from.id && (d.drop.index === fi || d.drop.index === fi + 1));
+      if (!changed) { renderStage(); return; }
+      if (!B.move(state.p, d.id, d.drop.into, d.drop.index)) { toast("That can't go there."); renderStage(); return; }
+      const t = B.find(state.p, d.drop.into);
+      if (d.type === "move" && !d.drop.reorder) {
+        if (t.kind === "stack") { n.props.x = 0; n.props.y = 0; }
+        else { // land where it was dropped: offset from its anchor in the new parent
+          const { W, H } = screenSize(), lay = L.layout(state.p, W, H), nb = boxOfId(lay, n.id), pin = innerOf(lay, parentBoxOf(lay, nb)), a = n.props.anchor || "center";
+          if (nb && d.ghost) { n.props.x = Math.round(d.ghost.x - pin.x - baseOff(a, pin.w, nb.w, "x")); n.props.y = Math.round(d.ghost.y - pin.y - baseOff(a, pin.h, nb.h, "y")); }
+        }
+        toast(`Moved ${n.name} into ${t.name}.`);
+      }
+    }
+    commit(); renderLayout();
+  }
+  function edUp() { edFinish(false); }
+  function edKey(e) {
+    if (e.key === "Escape" && e.type === "keydown") { e.preventDefault(); e.stopPropagation(); edFinish(true); return; }
+    // Shift / Alt / Ctrl pressed or released mid-drag take effect at once, without moving the mouse
+    if (["Shift", "Alt", "Control", "Meta"].includes(e.key) && edDrag && edDrag.started && edDrag.lastEv) {
+      if (e.key === "Alt") e.preventDefault();
+      const l = edDrag.lastEv; edMove({ clientX: l.clientX, clientY: l.clientY, shiftKey: e.shiftKey, altKey: e.altKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey });
+    }
+  }
+  /** Arrow keys nudge the selected element's offset (Shift: 8 px). */
+  function nudge(e) {
+    const n = sel(), par = n && B.parentOf(state.p, n.id); if (!par || par.kind === "stack") return false;
+    const step = e.shiftKey ? 8 : 1, dx = { ArrowLeft: -step, ArrowRight: step }[e.key] || 0, dy = { ArrowUp: -step, ArrowDown: step }[e.key] || 0;
+    n.props.x = (Number(n.props.x) || 0) + dx; n.props.y = (Number(n.props.y) || 0) + dy;
+    commit(); renderProps(); renderStage(); edStatus(`x ${n.props.x}, y ${-n.props.y || 0}  (+ is right / up)`); return true;
+  }
+  function drawEditOverlay(ctx, g, cx, cy) {
+    const X = (v) => (v - cx) * g, Y = (v) => (v - cy) * g, d = edDrag && edDrag.started ? edDrag : null;
+    const css = ctx.canvas.getBoundingClientRect().width / ctx.canvas.width || 1, u = 1 / css; // canvas px per screen px
+    const line = (l, color, w = 2, dash) => { ctx.setLineDash((dash || []).map((v) => v * u)); ctx.strokeStyle = color; ctx.lineWidth = w * u; ctx.beginPath(); ctx.moveTo(X(l.x1) + 0.5, Y(l.y1) + 0.5); ctx.lineTo(X(l.x2) + 0.5, Y(l.y2) + 0.5); ctx.stroke(); };
+    if (d) {
+      for (const gl of d.guides || []) line(gl, "rgba(237,40,127,.9)", 1, [3, 3]);
+      if (d.target) { ctx.setLineDash([]); ctx.fillStyle = "rgba(0,174,240,.12)"; ctx.fillRect(X(d.target.ax), Y(d.target.ay), d.target.w * g, d.target.h * g); ctx.strokeStyle = "rgba(0,174,240,.95)"; ctx.lineWidth = 2; ctx.strokeRect(X(d.target.ax) + 1, Y(d.target.ay) + 1, d.target.w * g - 2, d.target.h * g - 2); }
+      if (d.ghost) { ctx.setLineDash([4, 3]); ctx.strokeStyle = "#ed287f"; ctx.lineWidth = 2; ctx.fillStyle = "rgba(237,40,127,.15)"; ctx.fillRect(X(d.ghost.x), Y(d.ghost.y), d.ghost.w * g, d.ghost.h * g); ctx.strokeRect(X(d.ghost.x) + 1, Y(d.ghost.y) + 1, d.ghost.w * g - 2, d.ghost.h * g - 2); }
+      if (d.indicator) line(d.indicator, "#00aef0", 3);
+      if (d.type !== "resize" && d.type !== "model" && d.type !== "zoom") return;
+    }
+    const s = sel(); let mr = s && modelRect(s.id);
+    if (mr) { const mr0 = mr; mr = visibleRect(mr0, lastLay.crop); } // handles on the visible part
+    if (mr) { // the NPC model inside the selected portrait: dashed blue outline + corner handles (drag = move, corners = zoom)
+      const ml = X(mr.x), mt = Y(mr.y), mw = mr.w * g, mhh = mr.h * g, hs = Math.round(8 * u);
+      ctx.setLineDash([4 * u, 3 * u]); ctx.strokeStyle = "rgba(0,174,240,.95)"; ctx.lineWidth = 1.5 * u; ctx.strokeRect(ml + 0.5, mt + 0.5, mw - 1, mhh - 1); ctx.setLineDash([]);
+      for (const [x, y] of [[ml, mt], [ml + mw, mt], [ml, mt + mhh], [ml + mw, mt + mhh]]) { ctx.fillStyle = "#00aef0"; ctx.strokeStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, hs / 2, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+    }
+    const b = s && canResize(s) && boxOfId(lastLay, s.id); if (!b) return;
+    const L0 = X(b.ax), T0 = Y(b.ay), R0 = X(b.ax + b.w), B0 = Y(b.ay + b.h), mx = (L0 + R0) / 2, my = (T0 + B0) / 2, sz = Math.round(9 * u);
+    const pts = [[L0, T0], [R0, T0], [L0, B0], [R0, B0]];
+    if (R0 - L0 > 30 * u) pts.push([mx, T0], [mx, B0]);
+    if (B0 - T0 > 30 * u) pts.push([L0, my], [R0, my]);
+    ctx.setLineDash([]); ctx.lineWidth = 1.5 * u;
+    for (const [x, y] of pts) { ctx.fillStyle = "#fff"; ctx.strokeStyle = "#ed287f"; ctx.fillRect(Math.round(x - sz / 2), Math.round(y - sz / 2), sz, sz); ctx.strokeRect(Math.round(x - sz / 2) + 0.5, Math.round(y - sz / 2) + 0.5, sz - 1, sz - 1); }
   }
 
   // ------------------------------------------------------------------ properties
@@ -3614,6 +4051,8 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
     if (n === p.root) {
       box.append(h("div", { class: "section" }, h("h3", {}, "Screen"),
         field("UI name", txt(p.name, change((v) => (p.name = v || p.name)), { max: 48 }), "Pack names and the script function use it."),
+        field("Pack label (optional)", txt(p.packLabel || "", change((v) => { if (v.trim()) p.packLabel = v.trim(); else delete p.packLabel; }), { max: 32 }),
+          `Added to the pack names Minecraft shows, e.g. "${p.name} RP · ${p.packLabel || "test 2"}". Push also stamps the date and time into the description, so you can see which copy the game loaded.`),
         field("Namespace", txt(p.namespace, change((v) => (p.namespace = v.toLowerCase().replace(/[^a-z0-9_]/g, "_")))), `ui/${p.namespace}.json, textures/ui/${p.namespace}/, scripts/${p.namespace}.js`),
         p.type !== "npc" ? null : field("NPC name (preview + dialogue)", txt(p.title, change((v) => (p.title = v)))),
         h("p", { class: "help" }, "Flag for this screen: ", h("code", { class: "mono" }, B.flag(p).replace(/§/g, "§")))));
@@ -3631,13 +4070,20 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
       const a = Pp.anchor || "center";
       box.append(h("div", { class: "section" }, h("h3", {}, "Position in ", par.name),
         h("div", { class: "pos-row" }, h("div", { class: "anchor-grid", role: "group", "aria-label": "Anchor" }, ...ANCHORS.map((an) => h("button", { type: "button", title: an.replace("_", " "), "aria-pressed": String(a === an), onclick: change(() => (Pp.anchor = an)) }))),
-          h("div", { class: "xy" }, "X", num(Pp.x || 0, change((v) => (Pp.x = v))), "Y", num(Pp.y || 0, change((v) => (Pp.y = v))))),
-        h("p", { class: "help" }, "Pick the corner, edge or centre to pin to, then nudge with X / Y (GUI pixels).")));
-    } else if (par && par.kind === "stack") box.append(h("p", { class: "help" }, `Position: set by the stack "${par.name}" (order, gap and align). Drag in the hierarchy to reorder.`));
+          h("div", { class: "xy" }, "X", num(Number(Pp.x) || 0, change((v) => (Pp.x = v))), "Y", num(-(Number(Pp.y) || 0) || 0, change((v) => (Pp.y = -v || 0))))),
+        h("p", { class: "help" }, "Pick the corner, edge or centre to pin to, then nudge it: X + moves right, Y + moves up (GUI pixels). Or drag it on the preview, or use the arrow keys (Shift: 8 px).")));
+      const j = par.children.indexOf(n), last = par.children.length - 1;
+      const ob = (label, how, title, dis) => h("button", { type: "button", class: "btn small", title, disabled: dis, onclick: () => arrange(n, how) }, label);
+      box.append(h("div", { class: "section" }, h("h3", {}, "Order (front to back)"),
+        h("div", { class: "row-actions" }, ob("To front", "front", "Ctrl+Shift+]", j === last), ob("Forward", "forward", "Ctrl+]", j === last), ob("Backward", "backward", "Ctrl+[", j === 0), ob("To back", "back", "Ctrl+Shift+[", j === 0)),
+        h("p", { class: "help" }, `${last ? `${j === last ? "In front" : j === 0 ? "At the back" : `${last - j + 1} of ${last + 1} from the front`} in ${par.name}. ` : ""}Elements lower in the hierarchy draw on top of the ones above them, in the preview and in game (exported as layers).`)));
+    } else if (par && par.kind === "stack") box.append(h("p", { class: "help" }, `Position: set by the stack "${par.name}" (order, gap and align). Drag it on the preview or in the hierarchy to reorder.`));
     if (k.container === "free") {
       const fr = B.frameInfo(p, n);
       box.append(h("div", { class: "section" }, h("h3", {}, "Background"),
         field("Style", seg(Pp.bgStyle || "nine", [["nine", "Nine-slice art"], ["frame", "Decorated frame"]], change((v) => { Pp.bgStyle = v; B.ensureParts(p, n); }))),
+        Pp.bgStyle === "frame" ? h("div", {}, chk("Frame in front of the content", Pp.frameFront, change((v) => { if (v) Pp.frameFront = true; else delete Pp.frameFront; })),
+          h("small", { class: "help" }, "The border draws over everything inside it (e.g. an NPC that reaches the edge); the centre fill stays behind.")) : null,
         fr ? h("p", { class: "help" }, `Corners ${fr.cw}×${fr.ch}px are mirrored; the edge (${fr.et}px thick) is flipped and rotated for each side. Content is inset ${fr.inset}px by the frame.`) : h("p", { class: "help" }, "One texture that stretches to any size. For wide, patterned borders choose Decorated frame."),
         fr ? field("Edges", seg(Pp.edgeMode || "tile", [["tile", "Repeat (tiled)"], ["stretch", "Stretch"]], change((v) => (Pp.edgeMode = v)))) : null,
         fr ? field("Overhang (frame sits this many px outside the box)", num(Pp.overhang || 0, change((v) => (Pp.overhang = Math.max(0, Math.min(32, v)))), { min: 0 })) : null));
@@ -3695,13 +4141,14 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
       const dir = (v, l, r, c = "front") => (v === 0 ? c : `${Math.abs(v)}° ${v < 0 ? l : r}`);
       const slider = (label, key, min, max, fmt) => { const v0 = Pp[key] ?? (key === "zoom" ? 100 : 0); const out = h("span", { class: "mono" }, fmt(Number(v0) || 0)); const el = h("input", { type: "range", min, max, step: 1, value: Number(v0) || 0, "aria-label": label }); live(key, el, out, fmt); return h("label", { class: "field" }, h("span", {}, label, " · ", out), el); };
       const presets = [["Left", -60], ["¾ left", -25], ["Front", 0], ["Game", 15], ["¾ right", 25], ["Right", 60]];
-      const num2 = (label, key, title) => h("label", { class: "field", title }, h("span", {}, label), h("input", { type: "number", step: 1, value: Number(Pp[key]) || 0, onchange: (e) => change(() => (Pp[key] = Number(e.target.value) || 0))() }));
+      const num2 = (label, key, title, sg = 1) => h("label", { class: "field", title }, h("span", {}, label), h("input", { type: "number", step: 1, "aria-label": label, value: sg * (Number(Pp[key]) || 0) || 0, onchange: (e) => change(() => (Pp[key] = sg * (Number(e.target.value) || 0) || 0))() }));
       // size & position of the model inside its box (exported too: message_model is sized / offset to match)
       box.append(h("div", { class: "section" }, h("h3", {}, "Model size & position (in game too)"),
         slider("Zoom", "zoom", 50, 300, (v) => `${v || 100}%`),
-        h("div", { class: "row2" }, num2("Move X (px)", "panX", "Positive moves the model right"), num2("Move Y (px)", "panY", "Positive moves the model down")),
+        h("div", { class: "row2" }, num2("Move X (px)", "panX", "+ moves the model right"), num2("Move Y (px)", "panY", "+ moves the model up", -1)),
+        h("p", { class: "help" }, "Or select the portrait and drag the model on the preview; drag its blue corners to zoom."),
         h("div", { class: "row-actions" },
-          h("button", { type: "button", class: "btn small", title: "Head and shoulders", onclick: change(() => { const bh = ((lastLay && lastLay.flat.find((bx) => bx.node.id === n.id)) || { h: 97 }).h; Pp.zoom = 180; Pp.panX = 0; Pp.panY = Pp.mode === "free" ? Math.round(bh * 0.6) : Math.round(bh * (0.51 * 1.8 - 0.47)); }) }, "Close-up"),
+          h("button", { type: "button", class: "btn small", title: "Head and shoulders", onclick: change(() => { const bh = ((lastLay && lastLay.flat.find((bx) => bx.node.id === n.id)) || { h: 97 }).h; Pp.zoom = 180; Pp.panX = 0; Pp.panY = Pp.mode === "free" ? Math.round(bh * FREE_TOP_CLOSEUP) : Math.round(bh * (0.51 * 1.8 - 0.47)); }) }, "Close-up"),
           h("button", { type: "button", class: "btn small", onclick: change(() => { Pp.zoom = 100; Pp.panX = 0; Pp.panY = 0; }) }, "Reset size"))));
       if (!("zoom" in Pp)) Pp.zoom = 100;
       const locked = !!Pp.lockPose;
@@ -4088,6 +4535,15 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
   }
   async function writePath(dir, path, data) { const parts = path.split("/"), name = parts.pop(); for (const x of parts) dir = await dir.getDirectoryHandle(x, { create: true }); const w = await (await dir.getFileHandle(name, { create: true })).createWritable(); await w.write(data); await w.close(); }
   async function removePath(dir, path) { const parts = path.split("/"), name = parts.pop(); try { for (const x of parts) dir = await dir.getDirectoryHandle(x); await dir.removeEntry(name); return true; } catch (e) { return false; } }
+  /** Push keeps the installed pack's uuid / version, but updates its display name (label) and stamps the push time into the description. */
+  async function stampManifest(dir, built) {
+    try {
+      const fh = await dir.getFileHandle("manifest.json"), cur = JSON.parse(await (await fh.getFile()).text()), nb = JSON.parse(built);
+      const when = new Date().toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+      cur.header = cur.header || {}; cur.header.name = nb.header.name; cur.header.description = `${nb.header.description} · pushed ${when}`;
+      await writePath(dir, "manifest.json", JSON.stringify(cur, null, 2));
+    } catch (e) { /* no manifest there (or not readable): leave it alone */ }
+  }
   async function push(ask) {
     const p = state.p, rp = await linked("rp", ask), bp = await linked("bp", ask);
     if (!rp?.handle && !bp?.handle) { if (ask) toast("Link the installed pack folders first."); return; }
@@ -4095,6 +4551,7 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
     for (const [which, hd, files] of [["rp", rp, b.rp.files], ["bp", bp, b.bp.files]]) {
       if (!hd?.handle) continue;
       const paths = Object.keys(files).filter((x) => x !== "manifest.json");
+      await stampManifest(hd.handle, files["manifest.json"]);
       for (const x of paths) { await writePath(hd.handle, x, files[x]); n++; }
       for (const x of p.pushed[which] || []) if (!files[x] && x !== "manifest.json") removed += (await removePath(hd.handle, x)) ? 1 : 0;
       p.pushed[which] = paths;
@@ -4199,6 +4656,7 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
     $("btn-left").onclick = () => setSides({ l: !sidePrefs()[state.step].l });
     $("btn-right").onclick = () => setSides({ r: !sidePrefs()[state.step].r });
     $("btn-focus").onclick = toggleFocus;
+    $("btn-showall").onclick = showAll;
     $("btn-fullscreen").onclick = () => { if (document.fullscreenElement) document.exitFullscreen?.(); else document.documentElement.requestFullscreen?.().catch(() => toast("Full screen isn't allowed here; press F11.")); };
     document.addEventListener("fullscreenchange", () => $("btn-fullscreen").setAttribute("aria-pressed", String(!!document.fullscreenElement)));
     document.addEventListener("keydown", (e) => {
@@ -4267,7 +4725,13 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
       if (state.step === "layout" && !e.defaultPrevented && (e.key === "Delete" || e.key === "Backspace") && !e.target.closest("input, textarea, select, #tree, dialog[open]")) {
         const n = sel(); if (n && n !== state.p.root) { e.preventDefault(); del(n); } return;
       }
+      if (state.step === "layout" && !e.defaultPrevented && /^Arrow/.test(e.key) && !(e.ctrlKey || e.metaKey || e.altKey) && !e.target.closest("input, textarea, select, #tree, dialog[open], button")) {
+        if (nudge(e)) e.preventDefault(); return;
+      }
       if (!(e.ctrlKey || e.metaKey)) return; const k = e.key.toLowerCase();
+      if (state.step === "layout" && (e.code === "BracketRight" || e.code === "BracketLeft") && !e.target.closest("input, textarea, select, dialog[open]")) {
+        const n = sel(); if (n && n !== state.p.root) { e.preventDefault(); arrange(n, e.code === "BracketRight" ? (e.shiftKey ? "front" : "forward") : e.shiftKey ? "back" : "backward"); } return;
+      }
       if (k === "s") { e.preventDefault(); if (state.p) saveFile(); return; }
       if (e.target.closest("input, textarea, select")) return;
       if (k === "z" && !e.shiftKey) { e.preventDefault(); undo(); } else if (k === "y" || (k === "z" && e.shiftKey)) { e.preventDefault(); redo(); }
@@ -4286,7 +4750,13 @@ main { flex: 1; min-height: 0; overflow: auto; display: flex; }
     updateUndo();
     if (document.fonts) document.fonts.ready.then(() => { if (state.step === "type") renderTypes(); else if (state.step === "layout") renderStage(); else if (state.step === "design") renderMini(); });
   }
-  G.CLBuilder = { state, init, undo, redo, commit, setStep, load, toast, push, getBuild };
+  /** Client rect of an element on the layout stage (tests / tooling). */
+  function stageRect(id) {
+    const c = document.querySelector("#stage-inner canvas:not(.overlay)"), b = boxOfId(lastLay, id); if (!c || !b) return null;
+    const r = c.getBoundingClientRect(), k = r.width / lastLay.crop.w;
+    return { x: r.left + (b.ax - lastLay.crop.x) * k, y: r.top + (b.ay - lastLay.crop.y) * k, w: b.w * k, h: b.h * k, gw: b.w, gh: b.h, cells: b.cells && b.cells.map((cl) => ({ x: r.left + (b.ax + cl.x - lastLay.crop.x) * k, y: r.top + (b.ay + cl.y - lastLay.crop.y) * k, w: cl.w * k, h: cl.h * k, id: cl.item.id })) };
+  }
+  G.CLBuilder = { state, init, undo, redo, commit, setStep, load, toast, push, getBuild, stageRect, modelRect: (id) => { const mr = modelRect(id), c = document.querySelector("#stage-inner canvas:not(.overlay)"); if (!mr || !c) return null; const r = c.getBoundingClientRect(), k = r.width / lastLay.crop.w; return { x: r.left + (mr.x - lastLay.crop.x) * k, y: r.top + (mr.y - lastLay.crop.y) * k, w: mr.w * k, h: mr.h * k }; } };
   window.addEventListener("DOMContentLoaded", () => init().catch((e) => { console.error(e); toast("Couldn't start: " + e.message); }));
 })(typeof window !== "undefined" ? window : globalThis);
 
