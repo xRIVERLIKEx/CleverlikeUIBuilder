@@ -4151,14 +4151,20 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
       add(h("p", { class: "help" }, p.type === "npc" ? `Script block: if (button === "${B.slug(n.name)}")` : `Script block: if (response.selection === ${B.buttonsOf(p).indexOf(n)})`));
     }
     if (n.kind === "controls") {
-      add(field("Toggles look like", seg(Pp.toggleStyle, [["card", "Answer cards"], ["vanilla", "Vanilla switch (in a well)"]], change((v) => (Pp.toggleStyle = v)))));
+      add(field("Toggle style", seg(Pp.toggleStyle, [["card", "Checkbox card"], ["vanilla", "Classic switch"]], change((v) => (Pp.toggleStyle = v)))));
       add(h("div", { class: "row2" }, field("Gap", num(Pp.gap, change((v) => (Pp.gap = Math.max(0, v))))), field("Card text colour", color(Pp.color, change((v) => (Pp.color = v))))));
       add(chk("Scroll when long", Pp.scroll, change((v) => (Pp.scroll = v)))); if (Pp.scroll) add(field("Scroll area height", num(Pp.scrollH, change((v) => (Pp.scrollH = Math.max(40, v))))));
       add(h("p", { class: "help" }, "Sliders, dropdowns and text fields are drawn by the game (white labels), so they sit in a dark well you can restyle."));
     }
     if (["toggle", "slider", "dropdown", "input"].includes(n.kind)) {
       add(field("Label", txt(Pp.label, change((v) => (Pp.label = v)))), field("Key (name in the script's values)", txt(Pp.key, change((v) => (Pp.key = v.replace(/[^\w]/g, "_"))))));
-      if (n.kind === "toggle") add(chk("On by default", Pp.def, change((v) => (Pp.def = v))));
+      if (n.kind === "toggle") {
+        add(chk("On by default", Pp.def, change((v) => (Pp.def = v))));
+        // the look is set on the Form controls block (the game draws every toggle in a form with the same control)
+        const blk = B.parentOf(p, n.id);
+        if (blk && blk.kind === "controls") add(field("Style (all toggles in this form)", seg(blk.props.toggleStyle || "card", [["card", "Checkbox card"], ["vanilla", "Classic switch"]], change((v) => (blk.props.toggleStyle = v))),
+          `Set on ${blk.name}. The game uses one toggle design per form, so every toggle in it changes together.`));
+      }
       if (n.kind === "slider") add(h("div", { class: "row2" }, field("Min", num(Pp.min, change((v) => (Pp.min = v)))), field("Max", num(Pp.max, change((v) => (Pp.max = v)))), field("Step", num(Pp.step, change((v) => (Pp.step = v)), { min: 1 })), field("Default", num(Pp.def, change((v) => (Pp.def = v))))));
       if (n.kind === "dropdown") add(field("Options (comma separated)", txt(Pp.options, change((v) => (Pp.options = v)))), field("Default option (index)", num(Pp.def, change((v) => (Pp.def = Math.max(0, v))), { min: 0 })));
       if (n.kind === "input") add(field("Placeholder", txt(Pp.placeholder, change((v) => (Pp.placeholder = v)))), field("Default text", txt(Pp.def, change((v) => (Pp.def = v)))));
