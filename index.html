@@ -781,7 +781,7 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
 .menu-sep { height: 1px; background: var(--line); margin: 4px 2px; }
 
 /* draggable panel sizes: column widths (between the side columns and the middle) and the split between two stacked panes */
-.ws { position: relative; }
+.step { position: relative; }
 .ws-layout { grid-template-columns: var(--lw, 270px) minmax(0, 1fr) var(--rw, 320px); }
 .ws-export { grid-template-columns: var(--lw, 290px) minmax(0, 1fr); }
 .ws-layout.l-col { grid-template-columns: 34px minmax(0, 1fr) var(--rw, 320px); }
@@ -810,6 +810,17 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
 body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-select: none !important; }
 body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-select: none !important; }
 @media (max-width: 1100px) { .vsplit, .hsplit { display: none !important; } }
+
+/* design, right column: Colours and Selected art scroll on their own (the column itself never scrolls) */
+@media (min-width: 1351px) {
+  .ws-design > .col:last-child { overflow: hidden; }
+  .ws-design > .col:last-child > .colours-pane { flex: 0 1 auto; max-height: 48%; min-height: 0; }
+  .ws-design > .col:last-child > .art-props-pane { flex: 1 1 0; min-height: 120px; }
+  .ws-design > .col:last-child .colours, .ws-design > .col:last-child .props { overflow: auto; min-height: 0; flex: 1 1 auto; }
+  .ws-design > .col:last-child > .colours-pane.sized { max-height: none; }
+  .ws-design > .col:last-child > .pane.folded { flex: none !important; }
+  .ws-design > .col:last-child:has(> .colours-pane.folded) > .art-props-pane, .ws-design > .col:last-child:has(> .art-props-pane.folded) > .colours-pane { flex: 1 1 0 !important; max-height: none; }
+}
 
 </style>
 </head>
@@ -1805,7 +1816,8 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       if (changed || refit) fit(); else render();
     }
 
-    new ResizeObserver(resize).observe(canvas.parentElement);
+    // resize on the next frame: changing the canvas size inside the observer callback triggers "ResizeObserver loop" errors
+    let rq = 0; new ResizeObserver(() => { cancelAnimationFrame(rq); rq = requestAnimationFrame(resize); }).observe(canvas.parentElement);
     return { st, TOOLS, render, fit, center, zoomBy, zoomAt, setTool, setTarget, copy, pasteImg, clearSelection, selectAll, flipSel, commitFloating,
       get clipboard() { return st.clipboard; } };
   }
@@ -4709,7 +4721,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
         onclick: (e) => { if (e.altKey) { p.palette = p.palette.filter((x) => x !== c); p.paletteId = "custom"; commit(true); renderColours(); return; } setColor("primary", full); }, oncontextmenu: (e) => { e.preventDefault(); setColor("secondary", full); } });
       b.style.setProperty("--c", hex6(full)); sw.append(b); });
     const a = art();
-    box.append(field("Palette", palSel), info ? h("p", { class: "pal-note" }, `${info.note} By ${info.by}.`) : null, sw,
+    box.append(field("Palette", palSel), info ? h("p", { class: "pal-note" }, `${info.note} By ${info.by}.`) : h("span", { hidden: true }), sw, // (append() would print a null as "null")
       h("div", { class: "cur-row" }, "Left", h("input", { type: "color", value: hex6(state.primary), "aria-label": "Left colour", onchange: (e) => setColor("primary", e.target.value + alphaOf(state.primary).toString(16).padStart(2, "0")) }),
         "Right", h("input", { type: "color", value: hex6(state.secondary), "aria-label": "Right colour", onchange: (e) => setColor("secondary", e.target.value + "ff") }),
         h("button", { type: "button", class: "btn small", title: "Swap (X)", onclick: () => { [state.primary, state.secondary] = [state.secondary, state.primary]; renderColours(); } }, "⇄")),
@@ -5025,12 +5037,12 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
   function placeVSplits() {
     for (const [, cls] of Object.entries(WS)) {
       const ws = document.querySelector("." + cls); if (!ws || ws.closest(".step").hidden) continue;
-      const wr = ws.getBoundingClientRect(), gap = parseFloat(getComputedStyle(ws).columnGap) || 8;
-      for (const hd of ws.querySelectorAll(":scope > .vsplit")) {
+      const wr = ws.getBoundingClientRect(), gap = parseFloat(getComputedStyle(ws).columnGap) || 8, host = ws.parentElement.getBoundingClientRect();
+      for (const hd of ws._vsplits || []) {
         const col = hd._col, r = col.getBoundingClientRect(), stacked = r.width > wr.width * 0.8;
         hd.hidden = col.classList.contains("side-collapsed") || stacked;
-        hd.style.top = `${r.top - wr.top}px`; hd.style.height = `${r.height}px`;
-        hd.style.left = `${(hd._side === "l" ? r.right - wr.left + gap / 2 : r.left - wr.left - gap / 2) - 4}px`;
+        hd.style.top = `${r.top - host.top}px`; hd.style.height = `${r.height}px`;
+        hd.style.left = `${(hd._side === "l" ? r.right - host.left + gap / 2 : r.left - host.left - gap / 2) - 4}px`;
       }
     }
   }
@@ -5042,7 +5054,8 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       cols.forEach((col, i) => {
         const side = i === 0 ? "l" : "r";
         const hd = h("div", { class: "vsplit", role: "separator", "aria-orientation": "vertical", tabindex: "0", title: "Drag to resize this side; double-click to reset", "aria-label": `Resize the ${side === "l" ? "left" : "right"} panels` });
-        hd._col = col; hd._side = side; ws.append(hd);
+        // the handles live beside the grid (in the step), not in it, so the columns keep their :first-child / :last-child styles
+        hd._col = col; hd._side = side; (ws._vsplits = ws._vsplits || []).push(hd); ws.parentElement.append(hd);
         const width = () => col.getBoundingClientRect().width;
         const setW = (w) => { const max = Math.max(220, ws.getBoundingClientRect().width * 0.42); w = Math.round(Math.max(180, Math.min(max, w))); ws.style.setProperty(side === "l" ? "--lw" : "--rw", `${w}px`); relayout(); return w; };
         const save = (w) => { const cw = prefs().colw || {}; cw[step] = { ...(cw[step] || {}), [side]: w }; setPref("colw", cw); };
@@ -5054,7 +5067,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
         hd.addEventListener("dblclick", () => { const cw = prefs().colw || {}; if (cw[step]) delete cw[step][side]; setPref("colw", cw); applyColW(); relayout(); });
         hd.addEventListener("keydown", (e) => { if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return; e.preventDefault(); save(setW(width() + ((e.key === "ArrowRight") === (side === "l") ? 16 : -16))); });
       });
-      new ResizeObserver(() => placeVSplits()).observe(ws);
+      let rq = 0; new ResizeObserver(() => { cancelAnimationFrame(rq); rq = requestAnimationFrame(placeVSplits); }).observe(ws); // next frame: no observer loop
     }
     // two stacked panes in a side column: a handle between them sets the first one's height
     for (const col of document.querySelectorAll(".ws > .col")) {
