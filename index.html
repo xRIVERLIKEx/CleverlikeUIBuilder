@@ -2298,6 +2298,7 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
     for (const n of nodes) { const f = frameInfo(p, n); if (f && Math.abs(f.ch - f.et) > 0) warn(`${n.name}: the frame corner is ${f.ch}px tall but the edge is ${f.et}px thick; make them match so the edge meets the corner.`, n); }
     if (p.density > 1) tests.push(`Pixel density ${p.density}×: check borders keep their thickness in game (nine-slice base_size).`);
     for (const n of nodes) if (n.hidden) warn(`${n.name} is hidden in the preview (eye icon) but still exported and shown in game.`, n);
+    for (const n of nodes) if (n.kind === "buttons" && n.props.layout === "grid") tests.push(`${n.name}: the grid is sized for its ${n.children.length} button${n.children.length === 1 ? "" : "s"} (${Math.ceil(n.children.length / Math.max(1, Number(n.props.cols) || 4))} row(s)). Add a Button item for each button the script shows, or extra ones spill past the window.`);
     return { errors, warnings, tests };
   }
 
@@ -2801,18 +2802,26 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
         const def = { type: bg ? "image" : "panel", size: [sz(P.w), sz(P.h)], layer: 1, controls: [] };
         if (bg) def.texture = tex(bg, "default");
         if (n === p.root && P.mode === "screen") { def.size = ["100%", "100%"]; if (Number(P.dim) > 0) def.controls.push({ dim: { type: "image", texture: "textures/ui/White", color: [0, 0, 0], alpha: Math.round(Number(P.dim) * 100) / 100, size: ["100%", "100%"], layer: 0 } }); }
+        const fitW = P.w.m === "fit", fitH = P.h.m === "fit", plus = (v) => (pad ? `${v} + ${2 * pad}px` : v);
         if (frame) {
-          const fd = frameDef(n, frame);
-          if (P.frameFront) { // edges + corners above all the content; the centre fill stays behind it
+          // The frame must not be sized from its parent when the parent fits its content (a "100%" child of a "100%c" panel
+          // collapses it in game). Like vanilla's tooltip backgrounds, the frame takes the content's size ("100%sm" = its
+          // sibling, the inner panel) plus padding, and the parent takes the largest child ("100%cm"), which is the frame.
+          const fd = frameDef(n, frame), wrap = { type: "panel", size: [fitW ? plus("100%sm") : "100%", fitH ? plus("100%sm") : "100%"], layer: 0, controls: [] };
+          if (P.frameFront) { // edges + corners above all the content (layers add up: 0 + 400); the centre fill stays behind it
             const fi = fd.controls.findIndex((c) => c.fill);
-            if (fi >= 0) def.controls.push({ frame_fill: { type: "panel", size: fd.size, layer: 0, controls: [fd.controls.splice(fi, 1)[0]] } });
+            if (fi >= 0) wrap.controls.push({ frame_fill: { type: "panel", size: fd.size, layer: 0, controls: [fd.controls.splice(fi, 1)[0]] } });
             fd.layer = 400;
           }
-          def.controls.push({ frame: fd });
+          wrap.controls.push({ frame_art: fd });
+          def.controls.push({ frame: wrap });
         }
-        if (P.w.m === "fit") def.size[0] = pad ? `100%c + ${2 * pad}px` : "100%c";
-        if (P.h.m === "fit") def.size[1] = pad ? `100%c + ${2 * pad}px` : "100%c";
-        const innerDef = { type: k === "stack" ? "stack_panel" : "panel", size: [P.w.m === "fit" ? "100%c" : pad ? `100% - ${2 * pad}px` : "100%", P.h.m === "fit" ? "100%c" : pad ? `100% - ${2 * pad}px` : "100%"], controls: [] };
+        if (fitW) def.size[0] = frame ? "100%cm" : plus("100%c");
+        if (fitH) def.size[1] = frame ? "100%cm" : plus("100%c");
+        // a fit-content panel takes its TALLEST / widest child ("%cm"); "%c" adds the children up (right for a stack, wrong for a panel
+        // whose children overlap: content + an ornament + a close button came out ~45px too tall in game)
+        const fitInner = k === "stack" ? "100%c" : "100%cm";
+        const innerDef = { type: k === "stack" ? "stack_panel" : "panel", size: [P.w.m === "fit" ? fitInner : pad ? `100% - ${2 * pad}px` : "100%", P.h.m === "fit" ? fitInner : pad ? `100% - ${2 * pad}px` : "100%"], controls: [] };
         if (k === "stack") innerDef.orientation = P.dir === "horizontal" ? "horizontal" : "vertical";
         if (frame) innerDef.layer = 3; // content above the frame art
         const vert = P.dir !== "horizontal", gap = Number(P.gap) || 0;
@@ -2886,7 +2895,10 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
         let def;
         if (isGrid) {
           const cols = Math.max(1, Number(P.cols) || 4);
-          def = { type: "grid", size: [cols * (iw + gap), "default"], grid_item_template: REF(cell), grid_rescaling_type: "horizontal", collection_name: "form_buttons",
+          // a grid reports no height until the game fills it, so a "fit" parent would collapse to nothing: give it the height of
+          // the rows designed here (one row per `cols` buttons in the hierarchy; extra buttons from the script would spill past it)
+          const rows = Math.max(1, Math.ceil(n.children.length / cols));
+          def = { type: "grid", size: [cols * (iw + gap), rows * (ih + gap)], grid_item_template: REF(cell), grid_rescaling_type: "horizontal", collection_name: "form_buttons",
             bindings: [{ binding_name: "#form_button_length" }, { binding_type: "view", source_property_name: "(#form_button_length - 0)", target_property_name: "#maximum_grid_items" }] };
         } else {
           def = { type: "stack_panel", orientation: isRow ? "horizontal" : "vertical", size: isRow ? ["100%c", ih] : [P.scroll ? "100% - 6px" : "100%", "100%c"], anchor_from: "top_left", anchor_to: "top_left",
