@@ -1975,8 +1975,10 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
       parts: [{ key: "face", label: "Button face", starter: "btn" }] },
     controls: { label: "Form controls", group: "data", icon: "kControls", container: "control", types: ["modal"], status: "proven", kindOf: FREE, max: 1,
       help: "Draws every control the script adds, in order. Add Toggle, Slider, Dropdown and Text field items to define them.",
-      props: { w: FILL, h: FIT, toggleStyle: "card", gap: 3, color: "#1c293d", scroll: false, scrollH: 150 },
-      parts: [{ key: "well", label: "Dark well (slider, dropdown, text field)", starter: "inset" }, { key: "card", label: "Toggle card", starter: "ans" }, { key: "check", label: "Checkbox glyph", starter: "cb" }] },
+      props: { w: FILL, h: FIT, toggleStyle: "card", sliderArt: "custom", gap: 3, color: "#1c293d", scroll: false, scrollH: 150 },
+      parts: [{ key: "well", label: "Dark well (slider, dropdown, text field)", starter: "inset" }, { key: "card", label: "Toggle card", starter: "ans" }, { key: "check", label: "Checkbox glyph", starter: "cb" },
+        { key: "slTrack", label: "Slider track", starter: "slider_track", when: (P) => P.sliderArt !== "vanilla" }, { key: "slFill", label: "Slider fill (left of the handle)", starter: "slider_fill", when: (P) => P.sliderArt !== "vanilla" },
+        { key: "slHandle", label: "Slider handle", starter: "slider_handle", when: (P) => P.sliderArt !== "vanilla" }] },
     toggle:   { label: "Toggle", group: "item", icon: "kToggle", types: ["modal"], status: "proven", itemOf: "control", props: { label: "Show hints", key: "hints", def: true }, parts: [], help: "On/off. The script gets true or false." },
     slider:   { label: "Slider", group: "item", icon: "kSlider", types: ["modal"], status: "proven", itemOf: "control", props: { label: "Difficulty", key: "level", min: 1, max: 5, step: 1, def: 3 }, parts: [], help: "A number between min and max." },
     dropdown: { label: "Dropdown", group: "item", icon: "kDropdown", types: ["modal"], status: "proven", itemOf: "control", props: { label: "Biome", key: "biome", options: "Forest, Desert, Ocean", def: 0 }, parts: [], help: "Pick one option. The script gets the option's index." },
@@ -2045,6 +2047,21 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
   const STARTER_IMGS = {}; // name -> [Img per state], decoded once at start (PNG decode is async)
   async function init() {
     for (const sa of G.CLStarter.assets) STARTER_IMGS[sa.name] = await Promise.all(sa.states.map((s) => PNG.decode(PNG.b64ToBytes(s.png))));
+    await vanillaStarters();
+  }
+  /** Starters copied from the game's own textures (from the vanilla catalog): the slider's track, fill and handle, so a
+   *  custom slider starts out looking exactly like the vanilla one and can then be redrawn. */
+  async function vanillaStarters() {
+    const C = G.CLCatalog; if (!C || starterByName().slider_handle) return;
+    const img = async (name) => { const t = C.textures.find((x) => x.name === name); return t ? PNG.decode(PNG.b64ToBytes(t.png)) : null; };
+    const [border, bg, bgH, prog, progH, btn, btnH] = await Promise.all(["slider_border", "slider_background", "slider_background_hover", "slider_progress", "slider_progress_hover", "slider_button_default", "slider_button_hover"].map(img));
+    if (!border || !btn) return;
+    // the game draws the track as a 1px border (tinted black, white on hover) around the background; here it is one 3x3 nine-slice
+    const track = (back, ring) => { const o = R.clone(back); for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) if (R.get(border, x, y)[3]) R.set(o, x, y, R.hexToRgba(ring)); return o; };
+    const add = (name, nine, note, imgs) => { G.CLStarter.assets.push({ name, type: "nine", stateSet: "custom", folder: "", note, status: "seen", nine, states: [{ name: "default", suffix: "" }, { name: "hover", suffix: "_hover" }] }); STARTER_IMGS[name] = imgs; };
+    add("slider_track", 1, "Slider track (from the game's slider: border + background). Hover = while dragging.", [track(bg, "#000000"), track(bgH, "#ffffff")]);
+    add("slider_fill", 1, "Slider fill: the part left of the handle (from the game's slider_progress).", [prog, progH]);
+    add("slider_handle", 2, "Slider handle (from the game's slider_button). Drawn 9x15 in the form.", [btn, btnH]);
   }
   // original art drawn in code for the decorated-frame starters (Cleverlike navy + gold)
   const GEN = {
@@ -2146,6 +2163,8 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
     for (const part of activeParts(n)) if (!n.art[part.key] && !part.optional && part.starter) n.art[part.key] = starterAsset(p, part.starter);
     if (n.props.bgStyle === "frame" && n.art.fill === undefined) n.art.fill = starterAsset(p, "panel");
   }
+  /** Does this Form controls block draw sliders with its own art (track / fill / handle) instead of the game's? */
+  const customSlider = (n) => n.props.sliderArt !== "vanilla" && !!(n.art.slTrack && n.art.slFill && n.art.slHandle);
   /** Which assets are used, and by which nodes. */
   function artUsage(p) {
     const use = new Map();
@@ -2167,6 +2186,18 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
   function dedupe(p) {
     const used = new Set(["main"]);
     for (const n of all(p)) { let base = slug(n.name), name = base, i = 2; while (used.has(name)) name = `${base}_${i++}`; n.name = name; used.add(name); }
+  }
+  /** Form control keys must be unique (they become variable names in the script): the first keeps its key, later
+   *  repeats get key_2, key_3... Also fixes keys that aren't JavaScript names. Returns [[old, new, node], ...] for what changed. */
+  function dedupeKeys(p) {
+    const ctl = controlsOf(p), changed = [], clean = (k, kind) => { let key = String(k || kind).replace(/[^\w]/g, "_"); if (!/^[a-zA-Z_]/.test(key)) key = "_" + key; return key; };
+    const keys = ctl.map((c) => clean(c.props.key, c.kind));
+    // every key that is already unique stays put, and so does the first of each repeat; only the later repeats move
+    const used = new Set(), redo = [];
+    keys.forEach((k, i) => { if (used.has(k)) redo.push(i); else used.add(k); });
+    for (const i of redo) { const base = keys[i].replace(/_\d+$/, ""); let n = 2; while (used.has(`${base}_${n}`)) n++; keys[i] = `${base}_${n}`; used.add(keys[i]); }
+    ctl.forEach((c, i) => { if (c.props.key !== keys[i]) { changed.push([c.props.key, keys[i], c]); c.props.key = keys[i]; } });
+    return changed;
   }
   // ------------------------------------------------------------------ templates
   const TEMPLATES = {
@@ -2280,6 +2311,8 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
         if (c.kind === "dropdown" && !String(c.props.options).split(",").map((s) => s.trim()).filter(Boolean).length) err(`${c.name}: add options.`, c);
       }
       if (count("controls") && !controlsOf(p).length) warn("The Form controls block is empty.");
+      const cb = nodes.find((n) => n.kind === "controls");
+      if (cb && customSlider(cb) && controlsOf(p).some((c) => c.kind === "slider")) tests.push("Custom slider art: check the label shows the value, the handle drags and keyboard/controller still moves it.");
     }
     if (p.type === "npc") {
       if (!count("dialogue")) warn("No Speech bubble: the dialogue text won't show.");
@@ -2311,7 +2344,7 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
     return { errors, warnings, tests };
   }
 
-  G.CLB = { init, STARTER_IMGS, TEMPLATES, activeParts, ensureParts, frameInfo, padOf, FORMAT, TYPES, KINDS, ADDABLE, GROUPS, px, pct, FIT, FILL, allowed, canHold, walk, all, find, parentOf, remove, move, isAncestor, slug, camel, uniqueName,
+  G.CLB = { init, STARTER_IMGS, TEMPLATES, activeParts, ensureParts, frameInfo, padOf, dedupeKeys, customSlider, FORMAT, TYPES, KINDS, ADDABLE, GROUPS, px, pct, FIT, FILL, allowed, canHold, walk, all, find, parentOf, remove, move, isAncestor, slug, camel, uniqueName,
     starterAsset, asset, newNode, artUsage, partDef, newProject, template, dedupe, flag, buttonsOf, controlsOf, unsafeChars, validate, clone };
 })(typeof window !== "undefined" ? window : globalThis);
 
@@ -2634,7 +2667,14 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
           if (c.kind === "vtoggle") { T(IP.label, ix, cy + 9, iw - 40, "#ffffff"); const on = IP.def === true; fillRect(img, D, cx + c.w - 40, cy + 8, 32, 14, on ? "#3c8527" : "#5a5a5a"); fillRect(img, D, cx + c.w - 40 + (on ? 18 : 0), cy + 7, 14, 16, "#d0d0d0"); }
           // drawn to match the game's vanilla controls (measured from a capture): label at the top, the control from 15px down
           const bevel = (x0, y0, w0, h0, face, hi, lo, edge) => { fillRect(img, D, x0, y0, w0, h0, edge); fillRect(img, D, x0 + 1, y0 + 1, w0 - 2, h0 - 2, face); fillRect(img, D, x0 + 1, y0 + 1, w0 - 2, 1, hi); fillRect(img, D, x0 + 1, y0 + h0 - 2, w0 - 2, 1, lo); };
-          if (c.kind === "slider") {
+          if (c.kind === "slider" && B.customSlider(n)) { // the project's own slider art (same geometry as the export)
+            T(`${IP.label}: ${IP.def}`, cx + 3, cy + 4, c.w - 6, "#ffffff", { shadow: true });
+            const f = (Number(IP.def) - Number(IP.min)) / Math.max(1e-6, Number(IP.max) - Number(IP.min)), tx = cx + 8, tw = c.w - 16, kx = tx + Math.round((tw - 9) * f);
+            const hov = hotCell(n, i) !== "default" ? "hover" : "default";
+            drawArt(img, D, A(n.art.slTrack), hov, tx, cy + 17, tw, 9, cache);
+            if (kx + 4 - (tx + 1) > 0) drawArt(img, D, A(n.art.slFill), hov, tx + 1, cy + 18, Math.min(tw - 2, kx + 4 - (tx + 1)), 7, cache);
+            drawArt(img, D, A(n.art.slHandle), hov, kx, cy + 14, 9, 15, cache);
+          } else if (c.kind === "slider") {
             T(`${IP.label}: ${IP.def}`, cx + 3, cy + 4, c.w - 6, "#ffffff", { shadow: true });
             const f = (Number(IP.def) - Number(IP.min)) / Math.max(1e-6, Number(IP.max) - Number(IP.min)), tx = cx + 8, tw = c.w - 16, kx = tx + Math.round((tw - 9) * f);
             fillRect(img, D, tx, cy + 17, tw, 9, "#2b2b2b"); fillRect(img, D, tx + 1, cy + 18, tw - 2, 7, "#5a5a5a"); fillRect(img, D, tx + 1, cy + 18, kx - tx, 7, "#727272");
@@ -2953,10 +2993,37 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
       if (k === "controls") {
         const gap = Number(P.gap) || 0, well = A(n.art.well), card = A(n.art.card), check = A(n.art.check);
         const gapEl = { gap: { type: "panel", size: ["100%", gap] } };
-        const wellOf = (inner) => ({ type: "stack_panel", orientation: "vertical", size: ["100%", "100%c"], controls: [
-          { well: { type: "image", texture: tex(well, "default"), size: ["100%", "100%c + 6px"], controls: [{ [`control@${inner}`]: { size: ["100% - 6px", "100%c"], anchor_from: "center", anchor_to: "center" } }] } }, gapEl] });
-        ui[`${name}_slider`] = wellOf("server_form.custom_slider");
-        ui[`${name}_step_slider`] = wellOf("server_form.custom_step_slider");
+        // h: a fixed control height (our own slider: its parts are placed with offsets, which "100%c" doesn't count, so the
+        // well would shrink to the label and the bar would hang out of it)
+        const wellOf = (inner, h) => ({ type: "stack_panel", orientation: "vertical", size: ["100%", "100%c"], controls: [
+          { well: { type: "image", texture: tex(well, "default"), size: ["100%", h ? h + 6 : "100%c + 6px"], controls: [{ [`control@${inner}`]: { size: ["100% - 6px", h || "100%c"], anchor_from: "center", anchor_to: "center" } }] } }, gapEl] });
+        if (B.customSlider(n)) {
+          // our own slider (common.slider bound to the form's slider data) so its track, fill and handle use the project's art.
+          // Same names as the game's slider parts (slider_background / slider_progress...), so common.slider drives them.
+          const tr = A(n.art.slTrack), fl = A(n.art.slFill), hd = A(n.art.slHandle);
+          const bar = (st, sfx) => ({ type: "image", texture: tex(tr, st), controls: [{ sizing_panel: { type: "panel", size: ["100% - 2px", "100% - 2px"], controls: [
+            { [`slider_background${sfx}`]: { type: "panel", size: ["100%", "100%"], layer: 1 } },
+            { [`slider_progress${sfx}`]: { type: "image", texture: tex(fl, st), size: ["100%", "100%"], layer: 3, clip_direction: "left", clip_pixelperfect: false } }] } }] });
+          ui[`${name}_sl_bar`] = bar("default", ""); ui[`${name}_sl_bar_hover`] = bar("hover", "_hover");
+          ui[`${name}_sl_handle`] = { type: "image", texture: tex(hd, "default"), layer: 2 };
+          ui[`${name}_sl_handle_hover`] = { type: "image", texture: tex(hd, "hover"), layer: 2 };
+          const ctl = (sn, text, value, extra) => ({ type: "panel", size: ["100%", 31], controls: [
+            { label: label(text, "#ffffff", { size: ["100%", "default"], shadow: true, anchor_from: "top_left", anchor_to: "top_left", offset: [0, 1], bindings: [coll(text, "custom_form")] }) },
+            { "slider@common.slider": { size: ["100% - 10px", 9], anchor_from: "top_left", anchor_to: "top_left", offset: [5, 14],
+              $slider_name: sn, $slider_value_binding_name: value, $slider_tts_text_value: `${value.replace("_value", "_text_value")}`, $slider_binding_type: "collection", $slider_collection_name: "custom_form",
+              $slider_enabled_binding_name: "#custom_slider_enabled", $slider_enabled_binding_type: "collection",
+              $slider_box_layout: REF(`${name}_sl_handle`), $slider_box_hover_layout: REF(`${name}_sl_handle_hover`), $slider_box_locked_layout: REF(`${name}_sl_handle`), $slider_box_indent_layout: REF(`${name}_sl_handle_hover`),
+              $slider_box_size: [9, 15], ...extra,
+              controls: [{ "slider_box@common.slider_box": { $slider_box_layout: "$slider_box_layout", $slider_box_size: "$slider_box_size", $slider_track_button: "$slider_name" } },
+                { [`slider_bar_default@${REF(`${name}_sl_bar`)}`]: {} }, { [`slider_bar_hover@${REF(`${name}_sl_bar_hover`)}`]: { visible: false } }] } }] });
+          ui[`${name}_sl_ctl`] = ctl("custom_slider", "#custom_slider_text", "#custom_slider_value", {});
+          ui[`${name}_sl_step_ctl`] = ctl("custom_slider_step", "#custom_slider_step_text", "#custom_slider_step_value", { $slider_steps_binding_type: "collection", $slider_steps_binding_name: "#custom_slider_steps" });
+          ui[`${name}_slider`] = wellOf(REF(`${name}_sl_ctl`), 31);
+          ui[`${name}_step_slider`] = wellOf(REF(`${name}_sl_step_ctl`), 31);
+        } else {
+          ui[`${name}_slider`] = wellOf("server_form.custom_slider");
+          ui[`${name}_step_slider`] = wellOf("server_form.custom_step_slider");
+        }
         ui[`${name}_dropdown`] = wellOf("server_form.custom_dropdown");
         ui[`${name}_input`] = wellOf("server_form.custom_input");
         let toggleRef;
@@ -3377,6 +3444,10 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
   function snapshot() { return { p: K.cloneKit(state.p), selId: state.selId, artId: state.artId }; }
   function commit(quiet) {
     state.cache.clear();
+    // repeated form keys (two "hints" toggles...) are renamed hints_2, hints_3 instead of becoming a problem to fix
+    if (state.p) B.dedupe(state.p); // element names too (they become JSON UI element names)
+    const renamed = state.p ? B.dedupeKeys(state.p) : [];
+    if (renamed.length && !quiet) { toast(renamed.length === 1 ? `Key "${renamed[0][0]}" was taken, so this one is "${renamed[0][1]}".` : `Renamed ${renamed.length} repeated keys: ${renamed.map((r) => r[1]).join(", ")}.`); if (state.step === "layout") setTimeout(() => renderProps(), 0); }
     hist.stack = hist.stack.slice(0, hist.at + 1); hist.stack.push(snapshot());
     if (hist.stack.length > 100) hist.stack.shift();
     hist.at = hist.stack.length - 1; updateUndo(); scheduleSave(); autoPush();
@@ -4041,7 +4112,38 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
     return h("div", { class: "field" }, h("span", {}, part.label),
       h("div", { class: "art-pick" }, h("span", { class: "th" }, a ? thumb(K.flat(a, a.states[0]), 32) : ""),
         selectEl(n.art[part.key] || "", opts, (v) => { n.art[part.key] = v || null; commit(); renderLayout(); }),
-        h("button", { type: "button", class: "btn small", disabled: !a, title: "Open this art in the Design step", onclick: () => { state.artId = a.id; state.artCtx = { nodeId: n.id, part: part.key }; state.stateIdx = 0; setStep("design"); } }, "Edit art")));
+        h("button", { type: "button", class: "btn small", disabled: !a, title: "Open this art in the Design step", onclick: () => { state.artId = a.id; state.artCtx = { nodeId: n.id, part: part.key }; state.stateIdx = 0; setStep("design"); } }, "Edit art"),
+        h("button", { type: "button", class: "btn small", title: "Make a new blank texture the size this element is drawn at, ready to paint", onclick: () => newArtFor(n, part) }, "New")));
+  }
+  /** A fresh texture for one art slot of an element, sized to how big the element is drawn (its box, or one button / control
+   *  cell), at the screen's pixel density. It copies the slot's states (hover, pressed, checked...) so it works as a drop-in. */
+  function newArtFor(n, part) {
+    const p = state.p, D = p.density || 1, cur = B.asset(p, n.art[part.key]);
+    const lay = lastLay && lastLay.flat.some((b) => b.node.id === n.id) ? lastLay : L.layout(p, screenSize().W, screenSize().H);
+    const box = lay.flat.find((b) => b.node.id === n.id);
+    const cellParts = ["face", "card", "well"], cell = box && box.cells && box.cells[0];
+    let gw = cell && cellParts.includes(part.key) ? cell.w : box ? box.w : 32, gh = cell && cellParts.includes(part.key) ? cell.h : box ? box.h : 32;
+    if (["corner", "edge", "check", "slHandle"].includes(part.key) && cur) { gw = cur.w / (cur.density || 1); gh = cur.h / (cur.density || 1); } // fixed-size pieces keep their size
+    let w = Math.max(4, Math.round(gw * D)), hh = Math.max(4, Math.round(gh * D)); const big = w > 256 || hh > 256;
+    if (big) { const k = 256 / Math.max(w, hh); w = Math.max(4, Math.floor(w * k)); hh = Math.max(4, Math.floor(hh * k)); }
+    // states: same names as the slot's current art (or its starter), so hover / pressed / checked keep working
+    const sa = part.starter && G.CLStarter.assets.find((x) => x.name === part.starter);
+    const states = cur ? cur.states.map((st) => ({ name: st.name, suffix: st.suffix })) : sa ? sa.states.map((st) => ({ name: st.name, suffix: st.suffix })) : [{ name: "default", suffix: "" }];
+    const sprite = part.key === "art" || part.key === "check" || part.key === "corner" || part.key === "edge" || (cur ? cur.type === "sprite" : sa ? sa.type === "sprite" : false);
+    // a plain starting look: dark outline, light top edge, flat fill (lighter for hover, darker for pressed, greener for checked / on)
+    const base = R.hexToRgba(n.kind === "window" || n.kind === "panel" ? "#123a75" : "#1a4f9c");
+    const shade = (c, f) => [0, 1, 2].map((i) => Math.max(0, Math.min(255, Math.round(c[i] * f)))).concat([c[3]]);
+    const tone = (nm) => /checked|^on/.test(nm) ? [40, 140, 70, 255] : /pressed/.test(nm) ? shade(base, 0.8) : /hover/.test(nm) ? shade(base, 1.25) : base;
+    const paint = (nm) => { const im = R.create(w, hh), c = tone(nm), hi = shade(c, 1.45), edge = [10, 20, 40, 255];
+      if (part.key === "art") return im; // pictures / ornaments start fully transparent (no outline left behind)
+      for (let y = 0; y < hh; y++) for (let x = 0; x < w; x++) R.set(im, x, y, x === 0 || y === 0 || x === w - 1 || y === hh - 1 ? edge : y === 1 ? hi : c); return im; };
+    const bw = Math.max(1, Math.min(3 * D, Math.floor((Math.min(w, hh) - 1) / 2)));
+    const a = { id: K.uid(), name: "", type: sprite ? "sprite" : "nine", stateSet: cur ? cur.stateSet : sa ? sa.stateSet : "single", folder: "", note: `Made for ${n.name} (${part.label}), ${Math.round(gw)}×${Math.round(gh)} GUI px`, status: "draft",
+      w, h: hh, nine: sprite ? null : { l: bw, t: bw, r: bw, b: bw }, density: D, states: states.map((st) => ({ id: K.uid(), name: st.name, suffix: st.suffix, layers: [K.layer(paint(st.name))] })) };
+    let nm = B.slug(`${n.name}_${part.key}`), i = 2; while (p.assets.some((x) => x.name === nm)) nm = `${B.slug(`${n.name}_${part.key}`)}_${i++}`; a.name = nm;
+    p.assets.push(a); n.art[part.key] = a.id;
+    commit(); toast(`New ${w}×${hh} texture "${nm}" for ${n.name}${big ? " (capped at 256 px)" : ""}. Paint it here.`);
+    state.artId = a.id; state.artCtx = { nodeId: n.id, part: part.key }; state.stateIdx = 0; setStep("design");
   }
   function iconPicker(n) {
     const p = state.p, icons = p.assets.filter((a) => a.folder === "icons");
@@ -4151,6 +4253,8 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
       add(h("p", { class: "help" }, p.type === "npc" ? `Script block: if (button === "${B.slug(n.name)}")` : `Script block: if (response.selection === ${B.buttonsOf(p).indexOf(n)})`));
     }
     if (n.kind === "controls") {
+      add(field("Slider look", seg(B.customSlider(n) ? "custom" : "vanilla", [["custom", "Custom art (editable)"], ["vanilla", "Game's slider"]], change((v) => { Pp.sliderArt = v; if (v === "custom") B.ensureParts(p, n); })),
+        B.customSlider(n) ? "Track, fill and handle start as copies of the game's slider; edit them in Design." : "Uses the game's own slider textures."));
       add(field("Toggle style", seg(Pp.toggleStyle, [["card", "Checkbox card"], ["vanilla", "Classic switch"]], change((v) => (Pp.toggleStyle = v)))));
       add(h("div", { class: "row2" }, field("Gap", num(Pp.gap, change((v) => (Pp.gap = Math.max(0, v))))), field("Card text colour", color(Pp.color, change((v) => (Pp.color = v))))));
       add(chk("Scroll when long", Pp.scroll, change((v) => (Pp.scroll = v)))); if (Pp.scroll) add(field("Scroll area height", num(Pp.scrollH, change((v) => (Pp.scrollH = Math.max(40, v))))));
@@ -4320,7 +4424,7 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
     const n = hit.box.node, parts = B.activeParts(n).filter((pp) => n.art[pp.key]);
     if (!parts.length) { toast(`${n.name} has no art of its own.`); return; }
     let part = parts[0];
-    if (n.kind === "controls" && hit.item) part = parts.find((pp) => pp.key === (hit.item.kind === "toggle" && n.props.toggleStyle !== "vanilla" ? "card" : "well")) || part;
+    if (n.kind === "controls" && hit.item) part = parts.find((pp) => pp.key === (hit.item.kind === "toggle" && n.props.toggleStyle !== "vanilla" ? "card" : hit.item.kind === "slider" && B.customSlider(n) ? "slHandle" : "well")) || part;
     selectArt(n.art[part.key], { nodeId: n.id, part: part.key });
   }
 
@@ -4480,7 +4584,9 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
         h("p", { class: "density-explain" }, h("b", {}, `${d}× density`), ` · ${d} texture px per GUI px. This art is drawn ${Math.round(a.w / d)}×${Math.round(a.h / d)} GUI px at its natural size${a.type === "nine" ? `; borders are ${a.nine.l / d}px thick on screen` : ""}.`),
         h("div", { class: "row-actions" },
           h("button", { type: "button", class: "btn small", disabled: a.w * 2 > 256 || a.h * 2 > 256, title: "Each pixel becomes 2×2: looks the same, but you can add finer detail", onclick: () => rescaleArt(a, 2) }, "Upscale 2× (finer detail)"),
-          h("button", { type: "button", class: "btn small", disabled: d < 2 || a.w % 2 || a.h % 2, title: "Halve the resolution (keeps every other pixel)", onclick: () => rescaleArt(a, 0.5) }, "Downscale ½"))));
+          d >= 2 ? h("button", { type: "button", class: "btn small", disabled: a.w < 2 || a.h < 2, title: `Back to ${d / 2}× density: same size on screen, half the pixels (keeps every other pixel)`, onclick: () => rescaleArt(a, 0.5) }, `Downscale ½ (to ${d / 2}×)`)
+            : h("button", { type: "button", class: "btn small", disabled: a.w < 2 || a.h < 2, title: "Already 1 texture px per GUI px, so this halves the art itself: it is drawn half as big (keeps every other pixel)", onclick: () => rescaleArt(a, 0.5) }, "Shrink ½ (draws half size)")),
+        d < 2 ? h("small", { class: "muted" }, "Downscale undoes an upscale. At 1× the art can only shrink, which makes it smaller on screen.") : null));
     } else box.append(h("p", { class: "muted" }, "Pick an art slot on the left, or click an element in the live preview."));
     // project-wide density
     const pd = p.density || 1;
@@ -4499,10 +4605,11 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
     commit(true); renderDesign();
   }
   function rescaleArt(a, k, quiet) {
-    for (const s of a.states) for (const l of s.layers) l.img = k >= 1 ? L.scaleNearest(l.img, k) : (() => { const o = R.create(a.w / 2, a.h / 2); for (let y = 0; y < o.h; y++) for (let x = 0; x < o.w; x++) R.set(o, x, y, R.get(l.img, x * 2, y * 2)); return o; })();
-    a.w = Math.round(a.w * k); a.h = Math.round(a.h * k); a.density = Math.max(1, Math.round((a.density || 1) * k));
+    const nw = k >= 1 ? Math.round(a.w * k) : Math.max(1, Math.round(a.w / 2)), nh = k >= 1 ? Math.round(a.h * k) : Math.max(1, Math.round(a.h / 2));
+    for (const s of a.states) for (const l of s.layers) l.img = k >= 1 ? L.scaleNearest(l.img, k) : (() => { const o = R.create(nw, nh); for (let y = 0; y < o.h; y++) for (let x = 0; x < o.w; x++) R.set(o, x, y, R.get(l.img, Math.min(l.img.w - 1, x * 2), Math.min(l.img.h - 1, y * 2))); return o; })();
+    a.w = nw; a.h = nh; a.density = Math.max(1, Math.round((a.density || 1) * k));
     if (a.nine) a.nine = { l: Math.max(1, Math.round(a.nine.l * k)), t: Math.max(1, Math.round(a.nine.t * k)), r: Math.max(1, Math.round(a.nine.r * k)), b: Math.max(1, Math.round(a.nine.b * k)) };
-    if (!quiet) { commit(true); renderDesign(); toast(k > 1 ? "Upscaled: same look, twice the pixels to work with." : "Downscaled."); }
+    if (!quiet) { commit(true); renderDesign(); toast(k > 1 ? "Upscaled: same look, twice the pixels to work with." : (a.density || 1) >= 1 && k < 1 ? `Now ${a.w}×${a.h} at ${a.density}×.` : "Downscaled."); }
   }
   function assignToCtx(id) {
     const c = state.artCtx, n = c && B.find(state.p, c.nodeId);
