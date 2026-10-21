@@ -2189,7 +2189,7 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
     if (variant === "frame") {
       const sp = (hh) => N("spacer", { h: px(hh) });
       const content = p.type === "modal"
-        ? [sp(6), N("title", { align: "center", w: FILL }), sp(6), N("controls", {}, [N("input"), N("toggle"), N("slider"), N("dropdown")]), sp(4), N("submit"), sp(4)]
+        ? [sp(6), N("title", { align: "center", w: FILL }), sp(6), N("controls", { scroll: true, scrollH: 140 }, [N("input"), N("toggle"), N("slider"), N("dropdown")]), sp(4), N("submit"), sp(4)]
         : [sp(8), N("title", { align: "center", w: FILL }), sp(4), N("body", { align: "center" }), sp(6),
           N("buttons", { layout: "list", itemH: 22, icon: "left" }, ["Start lesson", "Lesson map", "Settings"].map((l, i) => N("button", { label: l, icon: starterAsset(p, ["star", "map", "gear"][i]) }))), sp(4)];
       const win = N("window", { w: px(p.type === "modal" ? 250 : 236), bgStyle: "frame", overhang: 2, pad: 4 }, [
@@ -2297,6 +2297,15 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
     if (p.type === "npc" && nodes.some((n) => n.kind === "portrait" && n.props.mode === "free")) tests.push("Free NPC portrait: check the model's size and position at different GUI scales.");
     for (const n of nodes) { const f = frameInfo(p, n); if (f && Math.abs(f.ch - f.et) > 0) warn(`${n.name}: the frame corner is ${f.ch}px tall but the edge is ${f.et}px thick; make them match so the edge meets the corner.`, n); }
     if (p.density > 1) tests.push(`Pixel density ${p.density}×: check borders keep their thickness in game (nine-slice base_size).`);
+    // too tall for a 1080p screen at GUI scale 4 (480x270)? the game doesn't scroll a window, it just runs off the screen
+    if (G.CLBLayout && p.root.props.mode !== "screen") {
+      try {
+        const lay = G.CLBLayout.layout(p, 480, 270); let y0 = Infinity, y1 = -Infinity;
+        for (const b of lay.flat) if (!b.hidden && b.h > 0) { y0 = Math.min(y0, b.ay); y1 = Math.max(y1, b.ay + b.h); }
+        const tall = Math.round(y1 - y0), ctl = nodes.find((n) => n.kind === "controls" || n.kind === "buttons");
+        if (tall > 262) warn(`The screen is ${tall}px tall with everything on it, but a 1080p screen is 270 GUI px (GUI scale 4), so it runs off the top and bottom.${ctl && !ctl.props.scroll ? ` Turn on scrolling in ${ctl.name} (its Scroll option), or remove some items.` : ""}`, ctl || p.root);
+      } catch (e) { /* layout not loaded (tests in node) */ }
+    }
     for (const n of nodes) if (n.hidden) warn(`${n.name} is hidden in the preview (eye icon) but still exported and shown in game.`, n);
     for (const n of nodes) if (n.kind === "buttons" && n.props.layout === "grid") tests.push(`${n.name}: the grid is sized for its ${n.children.length} button${n.children.length === 1 ? "" : "s"} (${Math.ceil(n.children.length / Math.max(1, Number(n.props.cols) || 4))} row(s)). Add a Button item for each button the script shows, or extra ones spill past the window.`);
     return { errors, warnings, tests };
@@ -2344,7 +2353,8 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
     if (spec.m === "fill") return Math.max(0, Math.round(avail));
     return content();
   }
-  const CONTROL_H = { toggle: 24, vtoggle: 26, slider: 28, dropdown: 32, input: 34 };
+  // vanilla control heights inside their 6px well, measured in game (GUI scale 4): text field and dropdown 45, slider 31
+  const CONTROL_H = { toggle: 24, vtoggle: 26, slider: 31, dropdown: 45, input: 45 };
   const textOf = (p, n) => (n.kind === "title" ? p.title : n.kind === "body" ? p.body : n.kind === "submit" ? n.props.text : n.props.text);
   const optionsOf = (n) => String(n.props.options || "").split(",").map((s) => s.trim()).filter(Boolean);
 
@@ -2622,9 +2632,25 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
           drawArt(img, D, A(n.art.well), "default", cx, cy, c.w, c.h, cache);
           const ix = cx + 4, iw = c.w - 8;
           if (c.kind === "vtoggle") { T(IP.label, ix, cy + 9, iw - 40, "#ffffff"); const on = IP.def === true; fillRect(img, D, cx + c.w - 40, cy + 8, 32, 14, on ? "#3c8527" : "#5a5a5a"); fillRect(img, D, cx + c.w - 40 + (on ? 18 : 0), cy + 7, 14, 16, "#d0d0d0"); }
-          if (c.kind === "slider") { T(`${IP.label}: ${IP.def}`, ix, cy + 5, iw, "#ffffff"); const f = (Number(IP.def) - Number(IP.min)) / Math.max(1e-6, Number(IP.max) - Number(IP.min)); fillRect(img, D, ix, cy + 20, iw, 4, "#3b3b3b"); fillRect(img, D, ix, cy + 20, Math.round(iw * f), 4, "#3c8527"); fillRect(img, D, ix + Math.round(iw * f) - 3, cy + 16, 6, 12, "#d0d0d0"); }
-          if (c.kind === "dropdown") { T(IP.label, ix, cy + 5, iw, "#ffffff"); fillRect(img, D, ix, cy + 17, iw, 16, "#d0d0d0"); fillRect(img, D, ix + 1, cy + 18, iw - 2, 14, "#e8e8e8"); T(optionsOf(it)[Number(IP.def) || 0] || "", ix + 4, cy + 21, iw - 16, "#333333"); T("v", ix + iw - 10, cy + 20, 8, "#333333"); }
-          if (c.kind === "input") { T(IP.label, ix, cy + 5, iw, "#ffffff"); fillRect(img, D, ix, cy + 17, iw, 18, "#a0a0a0"); fillRect(img, D, ix + 1, cy + 18, iw - 2, 16, "#101010"); T(IP.def || IP.placeholder, ix + 4, cy + 22, iw - 8, IP.def ? "#ffffff" : "#8a8a8a"); }
+          // drawn to match the game's vanilla controls (measured from a capture): label at the top, the control from 15px down
+          const bevel = (x0, y0, w0, h0, face, hi, lo, edge) => { fillRect(img, D, x0, y0, w0, h0, edge); fillRect(img, D, x0 + 1, y0 + 1, w0 - 2, h0 - 2, face); fillRect(img, D, x0 + 1, y0 + 1, w0 - 2, 1, hi); fillRect(img, D, x0 + 1, y0 + h0 - 2, w0 - 2, 1, lo); };
+          if (c.kind === "slider") {
+            T(`${IP.label}: ${IP.def}`, cx + 3, cy + 4, c.w - 6, "#ffffff", { shadow: true });
+            const f = (Number(IP.def) - Number(IP.min)) / Math.max(1e-6, Number(IP.max) - Number(IP.min)), tx = cx + 8, tw = c.w - 16, kx = tx + Math.round((tw - 9) * f);
+            fillRect(img, D, tx, cy + 17, tw, 9, "#2b2b2b"); fillRect(img, D, tx + 1, cy + 18, tw - 2, 7, "#5a5a5a"); fillRect(img, D, tx + 1, cy + 18, kx - tx, 7, "#727272");
+            bevel(kx, cy + 15, 9, 15, "#c6c6c6", "#ffffff", "#8b8b8b", "#1e1e1e");
+          }
+          if (c.kind === "dropdown") {
+            T(IP.label, cx + 3, cy + 4, c.w - 6, "#ffffff", { shadow: true });
+            const bx = cx + 3, bw = c.w - 6; bevel(bx, cy + 15, bw, 28, "#c6c6c6", "#ffffff", "#7a7a7a", "#1e1e1e");
+            T(optionsOf(it)[Number(IP.def) || 0] || "", bx + 9, cy + 25, bw - 26, "#4c4c4c");
+            for (let r = 0; r < 4; r++) fillRect(img, D, bx + bw - 15 + r, cy + 27 + r, 8 - 2 * r, 1, "#4c4c4c");
+          }
+          if (c.kind === "input") {
+            T(IP.label, cx + 3, cy + 4, c.w - 6, "#ffffff", { shadow: true });
+            const bx = cx + 3, bw = c.w - 6; bevel(bx, cy + 15, bw, 29, "#656565", "#5a5a5a", "#8b8b8b", "#1e1e1e");
+            T(IP.def || IP.placeholder, bx + 3, cy + 26, bw - 8, IP.def ? "#ffffff" : "#c8c8c8", { shadow: !IP.def ? false : true });
+          }
         });
         if (b.scroll) { fillRect(img, D, x + b.w - 5, y, 5, b.h, "#000000", 0.35); fillRect(img, D, x + b.w - 5, y, 5, Math.max(8, Math.round((b.h * b.h) / Math.max(b.h, b.scroll.contentH))), "#c6c6c6"); }
         if (!b.cells.length) T("(Form controls: add Toggle, Slider, Dropdown or Text field)", x, y + 2, b.w, "#ffffff", { align: "center", shadow: true });
