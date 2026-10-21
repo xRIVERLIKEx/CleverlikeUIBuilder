@@ -615,7 +615,7 @@ pre.code.tall { max-height: none; min-height: 420px; }
   .ws-design > .col:last-child { grid-template-columns: 1fr; }
 }
 
-/* view toolbars: zoom, fit, centre, background, pop out */
+/* view toolbars: zoom, fit, center, background, pop out */
 .viewbar { display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; }
 .vb { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--sunk); font-size: .76rem; font-weight: 700; color: var(--ink); }
 .vb.icon { width: 28px; padding: 0; justify-content: center; }
@@ -811,7 +811,7 @@ body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-sel
 body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-select: none !important; }
 @media (max-width: 1100px) { .vsplit, .hsplit { display: none !important; } }
 
-/* design, right column: Colours and Selected art scroll on their own (the column itself never scrolls) */
+/* design, right column: Colors and Selected art scroll on their own (the column itself never scrolls) */
 @media (min-width: 1351px) {
   .ws-design > .col:last-child { overflow: hidden; }
   .ws-design > .col:last-child > .colours-pane { flex: 0 1 auto; max-height: 48%; min-height: 0; }
@@ -838,7 +838,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     <nav aria-label="Steps"><ol class="steps" id="steps">
       <li><button type="button" data-step="type" title="Pick the kind of screen"><span class="n">1</span><b>Type</b></button></li>
       <li><button type="button" data-step="layout" title="Elements and hierarchy"><span class="n">2</span><b>Layout</b></button></li>
-      <li><button type="button" data-step="design" title="Pixel art and colours"><span class="n">3</span><b>Design</b></button></li>
+      <li><button type="button" data-step="design" title="Pixel art and colors"><span class="n">3</span><b>Design</b></button></li>
       <li><button type="button" data-step="export" title="Script and testing"><span class="n">4</span><b>Export</b></button></li>
     </ol></nav>
     <button class="ab-btn" type="button" id="btn-back" title="Previous step">←</button>
@@ -948,7 +948,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       </div>
       <div class="col">
         <span id="colours-home" hidden></span><section class="pane colours-pane" data-collapsible="colours-pane" id="colours-pane">
-          <header><div><p class="eyebrow">Colours</p><h2 class="label">Palette</h2></div></header>
+          <header><div><p class="eyebrow">Colors</p><h2 class="label">Palette</h2></div></header>
           <div id="colours" class="colours"></div>
         </section>
         <section class="pane art-props-pane" data-collapsible="art-props-pane">
@@ -1011,7 +1011,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
   const equals = (a, b) => a.w === b.w && a.h === b.h && a.d.every((v, i) => v === b.d[i]);
   const isEmpty = (im) => { for (let i = 3; i < im.d.length; i += 4) if (im.d[i]) return false; return true; };
 
-  // ---------- colour helpers
+  // ---------- color helpers
   function hexToRgba(hex) {
     let h = hex.replace("#", "");
     if (h.length === 3) h = h.split("").map((c) => c + c).join("");
@@ -1106,7 +1106,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
   const desaturate = (im, amt = 1) => mapPixels(im, (c) => { const hsl = rgbToHsl(c); hsl[1] *= 1 - amt; return [...hslToRgb(hsl), c[3]]; });
   const fade = (im, mul) => mapPixels(im, (c) => [c[0], c[1], c[2], Math.round(c[3] * mul)]);
   const tint = (im, color, amt) => mapPixels(im, (c) => [0, 1, 2].map((k) => Math.round(c[k] + (color[k] - c[k]) * amt)).concat([c[3]]));
-  /** Recolour the outer ring of the shape (pixels within `thickness` steps of transparency or the edge). */
+  /** Recolor the outer ring of the shape (pixels within `thickness` steps of transparency or the edge). */
   function outline(im, color, thickness = 1) {
     const dist = new Int16Array(im.w * im.h).fill(-1), q = [];
     for (let y = 0; y < im.h; y++) for (let x = 0; x < im.w; x++) {
@@ -1131,10 +1131,10 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
   const GENERATORS = {
     lighten:    { label: "Lighten",            run: (im, o) => lighten(im, o.amount ?? 0.1),  opts: { amount: 0.1 } },
     darken:     { label: "Darken",             run: (im, o) => lighten(im, -(o.amount ?? 0.1)), opts: { amount: 0.1 } },
-    outline:    { label: "Outline (colour)",   run: (im, o) => outline(im, o.color, o.thickness ?? 1), opts: { thickness: 2, color: null } },
+    outline:    { label: "Outline (color)",   run: (im, o) => outline(im, o.color, o.thickness ?? 1), opts: { thickness: 2, color: null } },
     shiftDown:  { label: "Shift down 1px",     run: (im) => shift(im, 0, 1) },
     press:      { label: "Press (shift + darken)", run: (im, o) => press(im, o.amount ?? 0.06), opts: { amount: 0.06 } },
-    tint:       { label: "Tint toward colour", run: (im, o) => tint(im, o.color, o.amount ?? 0.2), opts: { amount: 0.2, color: null } },
+    tint:       { label: "Tint toward color", run: (im, o) => tint(im, o.color, o.amount ?? 0.2), opts: { amount: 0.2, color: null } },
     desaturate: { label: "Desaturate",         run: (im, o) => desaturate(im, o.amount ?? 1), opts: { amount: 1 } },
     fade:       { label: "Fade (alpha)",       run: (im, o) => fade(im, o.amount ?? 0.5), opts: { amount: 0.5 } },
   };
@@ -1195,9 +1195,9 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
 </script>
 <script>
 /* Cleverlike UI Studio — exact PNG encode/decode.
- * Canvas premultiplies alpha, which shifts the colour of semi-transparent pixels (our 84%-opaque panels) on every
+ * Canvas premultiplies alpha, which shifts the color of semi-transparent pixels (our 84%-opaque panels) on every
  * round trip. This codec reads and writes the bytes directly so pixel art survives untouched.
- * Decodes 8-bit RGBA / RGB / grey / grey+alpha and indexed (1/2/4/8-bit, with tRNS). Falls back to canvas only for
+ * Decodes 8-bit RGBA / RGB / gray / gray+alpha and indexed (1/2/4/8-bit, with tRNS). Falls back to canvas only for
  * interlaced or 16-bit files. Encodes 8-bit RGBA. Uses (De)CompressionStream("deflate") = zlib, as PNG requires. */
 (function (G) {
   "use strict";
@@ -1335,7 +1335,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     ["Window", "#10499c"], ["Window edge", "#06204a"], ["Button", "#0a3a80"], ["Button hover", "#1a5ab0"], ["Button pressed", "#072a5c"],
     ["Accent", "#febd01", "accent"], ["Accent 2", "#ed287f"], ["Cyan", "#00aef0"], ["Cream", "#fff8e8"], ["Cream light", "#fffdf6"],
     ["Card shade", "#ead9b4"], ["Card edge", "#0a2e66"], ["Ink", "#1c293d"], ["Correct", "#15803d"], ["Well", "#0d1b30"],
-    ["White", "#ffffff"], ["Light grey", "#c6c6c6"], ["Grey", "#8b8b8b"], ["Dark grey", "#3a3a3a"], ["Black", "#000000"],
+    ["White", "#ffffff"], ["Light gray", "#c6c6c6"], ["Gray", "#8b8b8b"], ["Dark gray", "#3a3a3a"], ["Black", "#000000"],
   ];
 
   const layer = (img, name = "Layer 1") => ({ id: uid(), name, visible: true, opacity: 1, img });
@@ -1470,7 +1470,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
  * Tools: pencil / eraser (brush size), line, rectangle, fill, gradient (banded + dithered), eyedropper (returns to your brush),
  * select (lift / move / copy / paste), move layer. Optional texture (noise or dither) on everything you paint.
  * Extras: mirror X/Y, grid, onion skin (base state under the one you're drawing), draggable nine-slice guides,
- * wheel zoom around the cursor, space / middle-drag to pan. Left button = primary colour, right = secondary. */
+ * wheel zoom around the cursor, space / middle-drag to pan. Left button = primary color, right = secondary. */
 (function (G) {
   "use strict";
   const R = G.CLRaster;
@@ -1481,7 +1481,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
   };
   const BAYER4 = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]].map((r) => r.map((v) => (v + 0.5) / 16));
   const hash2 = (x, y) => { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
-  // blend two colours; towards a transparent end only the alpha fades (no grey from the transparent pixel's black)
+  // blend two colors; towards a transparent end only the alpha fades (no gray from the transparent pixel's black)
   const mix = (a, b, t) => { if (!a[3]) a = [b[0], b[1], b[2], 0]; if (!b[3]) b = [a[0], a[1], a[2], 0]; return [0, 1, 2, 3].map((i) => Math.round(a[i] + (b[i] - a[i]) * t)); };
 
   function createEditor(canvas, hooks) {
@@ -1531,7 +1531,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     }
     const toPx = (e) => { const r = canvas.getBoundingClientRect(); return { cx: e.clientX - r.left, cy: e.clientY - r.top }; };
     const toImg = ({ cx, cy }) => { const fx = (cx - st.ox) / st.zoom, fy = (cy - st.oy) / st.zoom; return { x: Math.floor(fx), y: Math.floor(fy), fx, fy }; };
-    /** Top-left pixel of the brush for pointer q: the brush is centred on the pointer, so an even size (2x2) sits on the
+    /** Top-left pixel of the brush for pointer q: the brush is centered on the pointer, so an even size (2x2) sits on the
      *  pixel corner nearest the cursor instead of hanging down-right of it. */
     const brushN = () => (["pencil", "eraser"].includes(st.tool) ? Math.max(1, st.brushSize | 0) : 1);
     const anchor = (q, n = brushN()) => (n === 1 || q.fx == null ? { x: q.x, y: q.y } : { x: Math.round(q.fx - n / 2), y: Math.round(q.fy - n / 2) });
@@ -1584,7 +1584,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       if (sel) { ctx.setLineDash([4, 3]); ctx.lineWidth = 1.5; ctx.strokeStyle = "#ed287f"; ctx.strokeRect(sel.x * z + 0.5, sel.y * z + 0.5, sel.w * z - 1, sel.h * z - 1); ctx.setLineDash([]); }
       // hover pixel
       if (st.hover && st.hover.x >= 0 && st.hover.y >= 0 && st.hover.x < a.w && st.hover.y < a.h && ["pencil", "eraser", "line", "rect", "fill", "picker", "gradient"].includes(st.tool)) {
-        const n = brushN(), A = anchor(st.hover, n); // brush footprint, centred on the pointer
+        const n = brushN(), A = anchor(st.hover, n); // brush footprint, centered on the pointer
         ctx.strokeStyle = "rgba(0,174,240,0.9)"; ctx.lineWidth = 1; ctx.strokeRect(A.x * z + 0.5, A.y * z + 0.5, n * z - 1, n * z - 1);
       }
       ctx.restore();
@@ -1602,20 +1602,20 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     const colorFor = (button, erase) => (erase ? [0, 0, 0, 0] : R.hexToRgba(hooks.getColor(button === 2 ? "secondary" : "primary")));
     const otherFor = (button) => R.hexToRgba(hooks.getColor(button === 2 ? "primary" : "secondary"));
     /** Texture: vary each painted pixel a little (noise: lighter / darker by up to texAmt %; dither: an ordered pattern of the
-     *  other colour at texAmt % density), so flat fills read as a surface. Erasing is never textured. */
+     *  other color at texAmt % density), so flat fills read as a surface. Erasing is never textured. */
     function texColor(x, y, c, other) {
       if (!c[3] || st.texture === "off") return c;
       const k = (Number(st.texAmt) || 0) / 100;
-      // dither against the other colour, or (if that's transparent) a darker shade of this one
+      // dither against the other color, or (if that's transparent) a darker shade of this one
       if (st.texture === "dither") return BAYER4[((y % 4) + 4) % 4][((x % 4) + 4) % 4] < k ? (other && other[3] ? other : [Math.round(c[0] * 0.72), Math.round(c[1] * 0.72), Math.round(c[2] * 0.72), c[3]]) : c;
       const f = 1 + (hash2(x, y) - 0.5) * 2 * k;
       return [Math.max(0, Math.min(255, Math.round(c[0] * f))), Math.max(0, Math.min(255, Math.round(c[1] * f))), Math.max(0, Math.min(255, Math.round(c[2] * f))), c[3]];
     }
     const plotTex = (other) => (im, x, y, c) => { for (const [px, py] of mirrored(x, y)) R.set(im, px, py, texColor(px, py, c, other)); };
-    /** Pencil / eraser stamp: a brushSize × brushSize square centred on the pixel (mirrored and textured like single pixels). */
+    /** Pencil / eraser stamp: a brushSize × brushSize square centered on the pixel (mirrored and textured like single pixels). */
     const plotBrush = (other) => (im, x, y, c) => { const n = Math.max(1, st.brushSize | 0), p = plotTex(other); // (x, y) = brush top-left
       for (let dy = 0; dy < n; dy++) for (let dx = 0; dx < n; dx++) p(im, x + dx, y + dy, c); };
-    /** Pixels a fill / gradient covers: the selection if there is one, else the area of the clicked colour (touching or everywhere). */
+    /** Pixels a fill / gradient covers: the selection if there is one, else the area of the clicked color (touching or everywhere). */
     function regionAt(im, x, y) {
       const m = new Uint8Array(im.w * im.h);
       if (st.sel) { for (let yy = st.sel.y; yy < st.sel.y + st.sel.h; yy++) for (let xx = st.sel.x; xx < st.sel.x + st.sel.w; xx++) if (xx >= 0 && yy >= 0 && xx < im.w && yy < im.h) m[yy * im.w + xx] = 1; return m; }
@@ -1628,7 +1628,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     }
     function fillRegion(im, m, colorAt) { for (let y = 0; y < im.h; y++) for (let x = 0; x < im.w; x++) if (m[y * im.w + x]) R.set(im, x, y, colorAt(x, y)); }
     /** Gradient from c0 (drag start) to c1 (drag end) in gradSteps bands, ordered-dithered between bands if gradDither. */
-    /** Overlay: the selection, else every pixel that already has colour (transparent areas stay transparent); an empty layer = all of it. */
+    /** Overlay: the selection, else every pixel that already has color (transparent areas stay transparent); an empty layer = all of it. */
     function overlayRegion(im) {
       const m = new Uint8Array(im.w * im.h);
       if (st.sel) { for (let yy = st.sel.y; yy < st.sel.y + st.sel.h; yy++) for (let xx = st.sel.x; xx < st.sel.x + st.sel.w; xx++) if (xx >= 0 && yy >= 0 && xx < im.w && yy < im.h) m[yy * im.w + xx] = 1; return m; }
@@ -1644,7 +1644,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
         const band = Math.min(n - 1, st.gradDither ? lo + (fr > BAYER4[((y % 4) + 4) % 4][((x % 4) + 4) % 4] ? 1 : 0) : Math.round(q));
         const c = mix(c0, c1, band / (n - 1));
         if (!over) return c;
-        // overlay: blend the gradient colour over what's there (its own alpha × the overlay opacity); keeps the pixel's coverage
+        // overlay: blend the gradient color over what's there (its own alpha × the overlay opacity); keeps the pixel's coverage
         const i = (y * im.w + x) * 4, px = [base.d[i], base.d[i + 1], base.d[i + 2], base.d[i + 3]], keep = px[3];
         R.blendPx(px, 0, c[0], c[1], c[2], Math.round(c[3] * op));
         if (keep) px[3] = keep; // a solid pixel stays as solid as it was
@@ -1829,11 +1829,11 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       h("select", { onchange: (e) => { st[key] = Number(e.target.value); refresh(); } }, ...values.map((v) => { const o = h("option", { value: v }, String(v)); if (Number(st[key]) === v) o.selected = true; return o; })));
     if (["pencil", "eraser"].includes(st.tool)) out.push(num("Size", "Brush size in pixels (a square)", "brushSize", [1, 2, 3, 4, 5, 6, 8, 10, 12, 16]));
     if (["pencil", "line", "rect", "fill"].includes(st.tool)) {
-      out.push(h("span", { class: "opt-seg", title: "Texture: vary the colour pixel by pixel so flat areas look like a surface" },
-        chip(st.texture === "off", "brush", "Flat", "Every pixel exactly the colour", set("texture", "off")),
+      out.push(h("span", { class: "opt-seg", title: "Texture: vary the color pixel by pixel so flat areas look like a surface" },
+        chip(st.texture === "off", "brush", "Flat", "Every pixel exactly the color", set("texture", "off")),
         chip(st.texture === "noise", "dither", "Noise", "Each pixel a little lighter or darker", set("texture", "noise")),
-        chip(st.texture === "dither", "grid", "Dither", "An even pattern of the other colour (right colour, or left when painting with right click)", set("texture", "dither"))));
-      if (st.texture !== "off") out.push(h("label", { class: "opt-num", title: st.texture === "noise" ? "How much lighter / darker (%)" : "How much of the other colour (%)" }, h("span", {}, "Amount"),
+        chip(st.texture === "dither", "grid", "Dither", "An even pattern of the other color (right color, or left when painting with right click)", set("texture", "dither"))));
+      if (st.texture !== "off") out.push(h("label", { class: "opt-num", title: st.texture === "noise" ? "How much lighter / darker (%)" : "How much of the other color (%)" }, h("span", {}, "Amount"),
         h("input", { type: "range", min: 5, max: st.texture === "noise" ? 40 : 75, step: 5, value: st.texAmt, oninput: (e) => { st.texAmt = Number(e.target.value); }, onchange: refresh }), h("b", {}, `${st.texAmt}%`)));
     }
     if (st.tool === "gradient") {
@@ -1841,9 +1841,9 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
         chip(st.gradMode === "replace", "fill", "Replace", "Paint the gradient instead of the existing pixels", set("gradMode", "replace"))));
       if (st.gradMode !== "replace") out.push(h("label", { class: "opt-num", title: "How strongly the gradient covers what's underneath" }, h("span", {}, "Opacity"),
         h("input", { type: "range", min: 10, max: 100, step: 5, value: st.gradOpacity, oninput: (e) => { st.gradOpacity = Number(e.target.value); }, onchange: refresh }), h("b", {}, `${st.gradOpacity}%`)));
-      out.push(num("Steps", "Number of colour bands from the left colour to the right colour", "gradSteps", [2, 3, 4, 5, 6, 8, 12, 16]));
-      out.push(chip(st.gradDither, "dither", "Dither", "Blend neighbouring bands with an even pixel pattern", () => { st.gradDither = !st.gradDither; refresh(); }));
-      if (st.gradMode === "replace") out.push(h("span", { class: "opt-seg" }, chip(st.fillContiguous, "touching", "Touching", "Fill the connected area you start on (or the selection)", set("fillContiguous", true)), chip(!st.fillContiguous, "allColor", "All matching", "Every pixel of that colour (or the selection)", set("fillContiguous", false))));
+      out.push(num("Steps", "Number of color bands from the left color to the right color", "gradSteps", [2, 3, 4, 5, 6, 8, 12, 16]));
+      out.push(chip(st.gradDither, "dither", "Dither", "Blend neighboring bands with an even pixel pattern", () => { st.gradDither = !st.gradDither; refresh(); }));
+      if (st.gradMode === "replace") out.push(h("span", { class: "opt-seg" }, chip(st.fillContiguous, "touching", "Touching", "Fill the connected area you start on (or the selection)", set("fillContiguous", true)), chip(!st.fillContiguous, "allColor", "All matching", "Every pixel of that color (or the selection)", set("fillContiguous", false))));
     }
     return out;
   }
@@ -1853,7 +1853,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
 </script>
 <script>
 /* Cleverlike UI Studio — toolbar icons (24×24 line icons, currentColor).
- * From Lucide (lucide.dev, ISC licence; "blend" = layers) and one from Tabler Icons (tabler.io, MIT licence: dither = "grain"). */
+ * From Lucide (lucide.dev, ISC license; "blend" = layers) and one from Tabler Icons (tabler.io, MIT license: dither = "grain"). */
 (function (G) {
   "use strict";
   const svg = (body, extra = "") => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${body}</svg>`;
@@ -1895,25 +1895,25 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
   const PALETTES = [
     { id: "cleverlike", name: "Cleverlike brand", by: "Cleverlike", note: "Our navy, yellow and pink, with card creams and neutrals. Matches the proven starter art.",
       colors: split("#06204a #072a5c #0a3a80 #10499c #1a5ab0 #00aef0 #febd01 #ed287f #fff8e8 #fffdf6 #ead9b4 #0a2e66 #1c293d #15803d #0d1b30 #ffffff #c6c6c6 #8b8b8b #3a3a3a #000000") },
-    { id: "minecraft-ui", name: "Minecraft UI", by: "Mojang (sampled from vanilla UI textures)", note: "The greys, greens and reds Minecraft's own windows, buttons and HUD use. Start here to look native.",
+    { id: "minecraft-ui", name: "Minecraft UI", by: "Mojang (sampled from vanilla UI textures)", note: "The grays, greens and reds Minecraft's own windows, buttons and HUD use. Start here to look native.",
       colors: split("#ffffff #f7f7f7 #c6c6c6 #b3b3b3 #8b8b8b #656465 #585658 #4e4e4e #404040 #373737 #212121 #000000 #aeee7a #17cd07 #52a055 #218306 #004e00 #ff1313 #bb1313 #9d6d43 #613c1b") },
-    { id: "minecraft-text", name: "Minecraft text codes", by: "Mojang (§ colour codes)", note: "The colours §0–§g give chat and labels. Handy when art must match coloured text.",
+    { id: "minecraft-text", name: "Minecraft text codes", by: "Mojang (§ color codes)", note: "The colors §0–§g give chat and labels. Handy when art must match colored text.",
       colors: split("#000000 #0000aa #00aa00 #00aaaa #aa0000 #aa00aa #ffaa00 #aaaaaa #555555 #5555ff #55ff55 #55ffff #ff5555 #ff55ff #ffff55 #ffffff #ddd605") },
-    { id: "pico-8", name: "PICO-8", by: "Lexaloffle", note: "16 bold colours from the fantasy console. Bright, high contrast, very readable at small sizes.",
+    { id: "pico-8", name: "PICO-8", by: "Lexaloffle", note: "16 bold colors from the fantasy console. Bright, high contrast, very readable at small sizes.",
       colors: split("#000000 #1d2b53 #7e2553 #008751 #ab5236 #5f574f #c2c3c7 #fff1e8 #ff004d #ffa300 #ffec27 #00e436 #29adff #83769c #ff77a8 #ffccaa") },
-    { id: "sweetie-16", name: "Sweetie 16", by: "GrafxKid", note: "A soft, friendly 16-colour set with good dark navies for UI frames.",
+    { id: "sweetie-16", name: "Sweetie 16", by: "GrafxKid", note: "A soft, friendly 16-color set with good dark navies for UI frames.",
       colors: split("#1a1c2c #5d275d #b13e53 #ef7d57 #ffcd75 #a7f070 #38b764 #257179 #29366f #3b5dc9 #41a6f6 #73eff7 #f4f4f4 #94b0c2 #566c86 #333c57") },
-    { id: "db16", name: "DawnBringer 16", by: "DawnBringer", note: "A classic, earthy 16-colour palette; natural ramps for wood, stone and leaves.",
+    { id: "db16", name: "DawnBringer 16", by: "DawnBringer", note: "A classic, earthy 16-color palette; natural ramps for wood, stone and leaves.",
       colors: split("#140c1c #442434 #30346d #4e4a4e #854c30 #346524 #d04648 #757161 #597dce #d27d2c #8595a1 #6daa2c #d2aa99 #6dc2ca #dad45e #deeed6") },
-    { id: "db32", name: "DawnBringer 32", by: "DawnBringer", note: "The 32-colour big sibling of DB16. Wide range with smooth ramps.",
+    { id: "db32", name: "DawnBringer 32", by: "DawnBringer", note: "The 32-color big sibling of DB16. Wide range with smooth ramps.",
       colors: split("#000000 #222034 #45283c #663931 #8f563b #df7126 #d9a066 #eec39a #fbf236 #99e550 #6abe30 #37946e #4b692f #524b24 #323c39 #3f3f74 #306082 #5b6ee1 #639bff #5fcde4 #cbdbfc #ffffff #9badb7 #847e87 #696a6a #595652 #76428a #ac3232 #d95763 #d77bba #8f974a #8a6f30") },
-    { id: "endesga-32", name: "Endesga 32", by: "ENDESGA", note: "Popular 32-colour game palette: warm skin and wood tones plus vivid accents.",
+    { id: "endesga-32", name: "Endesga 32", by: "ENDESGA", note: "Popular 32-color game palette: warm skin and wood tones plus vivid accents.",
       colors: split("#be4a2f #d77643 #ead4aa #e4a672 #b86f50 #733e39 #3e2731 #a22633 #e43b44 #f77622 #feae34 #fee761 #63c74d #3e8948 #265c42 #193c3e #124e89 #0099db #2ce8f5 #ffffff #c0cbdc #8b9bb4 #5a6988 #3a4466 #262b44 #181425 #ff0044 #68386c #b55088 #f6757a #e8b796 #c28569") },
-    { id: "na16", name: "NA16", by: "Nauris", note: "Muted, painterly 16 colours. Calm UI that doesn't fight the world behind it.",
+    { id: "na16", name: "NA16", by: "Nauris", note: "Muted, painterly 16 colors. Calm UI that doesn't fight the world behind it.",
       colors: split("#8c8fae #584563 #3e2137 #9a6348 #d79b7d #f5edba #c0c741 #647d34 #e4943a #9d303b #d26471 #70377f #7ec4c1 #34859d #17434b #1f0e1c") },
-    { id: "apollo", name: "Apollo", by: "AdamCYounis", note: "46 colours in tidy ramps (blues, greens, browns, reds, purples, greys). Great for shading frames.",
+    { id: "apollo", name: "Apollo", by: "AdamCYounis", note: "46 colors in tidy ramps (blues, greens, browns, reds, purples, grays). Great for shading frames.",
       colors: split("#172038 #253a5e #3c5e8b #4f8fba #73bed3 #a4dddb #19332d #25562e #468232 #75a743 #a8ca58 #d0da91 #4d2b32 #7a4841 #ad7757 #c09473 #d7b594 #e7d5b3 #341c27 #602c2c #884b2b #be772b #de9e41 #e8c170 #241527 #411d31 #752438 #a53030 #cf573c #da863e #1e1d39 #402751 #7a367b #a23e8c #c65197 #df84a5 #090a14 #10141f #151d28 #202e37 #394a50 #577277 #819796 #a8b5b2 #c7cfcc #ebede9") },
-    { id: "resurrect-64", name: "Resurrect 64", by: "Kerrie Lake", note: "A large, balanced 64-colour palette when you need many hues.",
+    { id: "resurrect-64", name: "Resurrect 64", by: "Kerrie Lake", note: "A large, balanced 64-color palette when you need many hues.",
       colors: split("#2e222f #3e3546 #625565 #966c6c #ab947a #694f62 #7f708a #9babb2 #c7dcd0 #ffffff #6e2727 #b33831 #ea4f36 #f57d4a #ae2334 #e83b3b #fb6b1d #f79617 #f9c22b #7a3045 #9e4539 #cd683d #e6904e #fbb954 #4c3e24 #676633 #a2a947 #d5e04b #fbff86 #165a4c #239063 #1ebc73 #91db69 #cddf6c #313638 #374e4a #547e64 #92a984 #b2ba90 #0b5e65 #0b8a8f #0eaf9b #30e1b9 #8ff8e2 #323353 #484a77 #4d65b4 #4d9be6 #8fd3ff #45293f #6b3e75 #905ea9 #a884f3 #eaaded #753c54 #a24b6f #cf657f #ed8099 #831c5d #c32454 #f04f78 #f68181 #fca790 #fdcbb0") },
     { id: "gameboy", name: "Game Boy (BGB)", by: "Nintendo / BGB emulator", note: "Four greens. A fun constraint for retro-style screens.",
       colors: split("#081820 #346856 #88c070 #e0f8d0") },
@@ -2127,7 +2127,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       help: "The root of the screen. Window: a box in the middle that can Fit its content. Full screen: covers the whole screen so elements pin to the screen edges with % sizes.",
       props: { w: px(240), h: FIT, pad: 6, mode: "window", dim: 0, bgStyle: "nine", edgeMode: "tile", overhang: 0 }, parts: [{ key: "bg", label: "Window background", starter: "panel", npcStarter: "panel_solid", optional: true, when: (P) => P.bgStyle !== "frame" }, { key: "corner", label: "Frame corner (drawn top-left; mirrored for the others)", starter: "frame_corner", when: (P) => P.bgStyle === "frame" }, { key: "edge", label: "Frame edge (drawn as the top edge; flipped and rotated for the others)", starter: "frame_edge", when: (P) => P.bgStyle === "frame" }, { key: "fill", label: "Frame fill (middle)", starter: "panel", optional: true, when: (P) => P.bgStyle === "frame" }] },
     panel:    { label: "Panel", group: "layout", icon: "kPanel", container: "free", types: "all", status: "proven", kindOf: FREE,
-      help: "A box. Children are pinned to a corner, edge or the centre (anchor) and nudged with an offset.",
+      help: "A box. Children are pinned to a corner, edge or the center (anchor) and nudged with an offset.",
       props: { w: FILL, h: px(40), pad: 0, bgStyle: "nine", edgeMode: "tile", overhang: 0 }, parts: [{ key: "bg", label: "Background", starter: null, optional: true, when: (P) => P.bgStyle !== "frame" }, { key: "corner", label: "Frame corner (drawn top-left; mirrored for the others)", starter: "frame_corner", when: (P) => P.bgStyle === "frame" }, { key: "edge", label: "Frame edge (drawn as the top edge; flipped and rotated for the others)", starter: "frame_edge", when: (P) => P.bgStyle === "frame" }, { key: "fill", label: "Frame fill (middle)", starter: "panel", optional: true, when: (P) => P.bgStyle === "frame" }] },
     stack:    { label: "Stack", group: "layout", icon: "kStack", container: "free", types: "all", status: "proven", kindOf: FREE,
       help: "Lines children up top to bottom (vertical) or left to right (horizontal), with a gap.",
@@ -2146,7 +2146,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     body:     { label: "Body text", group: "data", icon: "kBody", types: ["action"], status: "proven", kindOf: FREE, max: 1,
       help: "The message the script passes to .body().", props: { w: FILL, h: FIT, color: "#d9e6ff", scale: 1, align: "left", shadow: false }, parts: [] },
     close:    { label: "Close button", group: "data", icon: "kClose", types: "all", status: "proven", kindOf: FREE, max: 1,
-      help: "Closes the screen (the script sees it as cancelled). Esc always works too.",
+      help: "Closes the screen (the script sees it as canceled). Esc always works too.",
       props: { w: px(12), h: px(12) }, parts: [{ key: "face", label: "Close button", starter: "close" }] },
     buttons:  { label: "Button list", group: "data", icon: "kButtons", container: "button", types: ["action"], status: "proven", kindOf: FREE, max: 1,
       help: "Shows every button the script adds, in order, as a list, a row or a grid. Add Button items to name them for the script.",
@@ -2172,7 +2172,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       help: "Sends the form. Its text comes from the script (submitButton).", props: { w: FILL, h: px(22), text: "Save", color: "#ebf2ff", scale: 1, shadow: true },
       parts: [{ key: "face", label: "Submit button", starter: "btn" }] },
     dialogue: { label: "Speech bubble", group: "data", icon: "kBubble", types: ["npc"], status: "proven", kindOf: FREE, max: 1,
-      help: "The NPC's dialogue text, scrolling inside your art. Styled text uses your colour and size (a label bound to #dialogtext); Game text uses the vanilla text box (dark text).",
+      help: "The NPC's dialogue text, scrolling inside your art. Styled text uses your color and size (a label bound to #dialogtext); Game text uses the vanilla text box (dark text).",
       props: { w: px(222), h: px(97), text: "Welcome! Ask me anything about this lesson.", textStyle: "styled", color: "#383838", scale: 1, shadow: false }, parts: [{ key: "bg", label: "Speech bubble (optional)", starter: "bubble", optional: true }] },
     portrait: { label: "NPC portrait", group: "data", icon: "kPortrait", types: ["npc"], status: "proven", kindOf: FREE, max: 1,
       help: "The live 3D NPC model. Framed: clipped to this box. Free: drawn at this size without clipping, so a big character can bleed past edges (pin it to a screen corner).",
@@ -2386,8 +2386,8 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
   }
   // ------------------------------------------------------------------ templates
   const TEMPLATES = {
-    action: [["classic", "Classic window", "Centred window, title bar, button list."], ["frame", "Wide art frame", "A decorated frame with corners, repeating edges and a crest past the top edge."]],
-    modal: [["classic", "Classic window", "Centred window with the controls and a Save button."], ["frame", "Wide art frame", "The same form inside a decorated frame."]],
+    action: [["classic", "Classic window", "Centered window, title bar, button list."], ["frame", "Wide art frame", "A decorated frame with corners, repeating edges and a crest past the top edge."]],
+    modal: [["classic", "Classic window", "Centered window with the controls and a Save button."], ["frame", "Wide art frame", "The same form inside a decorated frame."]],
     npc: [["classic", "Classic window", "Portrait, speech bubble and a 3-across button grid."], ["story", "Full-screen story", "Visual-novel style: dialogue bar along the bottom, a big character, name plate, buttons stacked on the right."]],
   };
   function template(p, variant = "classic") {
@@ -2737,7 +2737,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     R.drawOverInPlace(img, out, Math.round(x * D), Math.round(y * D));
   }
   /** Decorated frame: fill, 4 edges (tiled or stretched), 4 mirrored corners; extends `overhang` px outside the box. */
-  /** part: "all" | "fill" (the centre only) | "edges" (edges + corners; drawn last when the frame is in front of the content) */
+  /** part: "all" | "fill" (the center only) | "edges" (edges + corners; drawn last when the frame is in front of the content) */
   function drawFrame(p, img, D, n, x, y, w, h, cache, part = "all") {
     const f = B.frameInfo(p, n), A = (id) => B.asset(p, id); if (!f) return;
     const X = x - f.o, Y = y - f.o, W = w + 2 * f.o, H = h + 2 * f.o, tile = n.props.edgeMode === "stretch" ? null : true;
@@ -2798,7 +2798,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       drawArt(img, D, A(faceId), st, cell.x, cell.y, cell.w, cell.h, cache, clip);
       const isz = Number(P.iconSize) || 16, ic = cell.item ? cell.item.props.icon : n.props.icon;
       let tx = cell.x + 3, tw = cell.w - 6, ty = cell.y + Math.floor((cell.h - LINE * (P.scale || 1)) / 2) + 1 + lift;
-      if (iconMode === "left") { drawIcon(ic, cell.x + 4, cell.y + Math.floor((cell.h - isz) / 2) + lift, isz); tx = cell.x + isz + 7; tw = (P.align || "center") === "left" ? cell.w - isz - 10 : cell.w - 2 * (isz + 7); } // centred text stays centred on the button
+      if (iconMode === "left") { drawIcon(ic, cell.x + 4, cell.y + Math.floor((cell.h - isz) / 2) + lift, isz); tx = cell.x + isz + 7; tw = (P.align || "center") === "left" ? cell.w - isz - 10 : cell.w - 2 * (isz + 7); } // centered text stays centered on the button
       else if (iconMode === "top") { drawIcon(ic, cell.x + Math.floor((cell.w - isz) / 2), cell.y + 4 + lift, isz); ty = cell.y + cell.h - LINE * (P.scale || 1) - 3 + lift; }
       T(label, tx, ty, tw, P.color, { sc: P.scale || 1, align: P.align || "center", shadow: P.shadow, clip: isect(iconMode === "top" ? [cell.x + 3, ty - 1, cell.w - 6, LINE * (P.scale || 1) + 2] : [tx, cell.y, tw, cell.h], clip) });
     };
@@ -2890,7 +2890,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       }
       if (n.kind === "portrait") {
         if (n.art.bg) drawArt(img, D, A(n.art.bg), "default", x, y, b.w, b.h, cache);
-        else if (P.mode !== "free") { fillRect(img, D, x, y, b.w, b.h, "#111111"); fillRect(img, D, x + 1, y + 1, b.w - 2, b.h - 2, "#4a4a4a"); } // the game's grey portrait window
+        else if (P.mode !== "free") { fillRect(img, D, x, y, b.w, b.h, "#111111"); fillRect(img, D, x + 1, y + 1, b.w - 2, b.h - 2, "#4a4a4a"); } // the game's gray portrait window
         if (opts.npcSkin && G.CLBModel3D) // unlocked = what the game draws today: fixed slight turn, head straight; locked = the pose the pack forces in game
           models.push({ id: n.id, x, y, w: b.w, h: b.h, free: P.mode === "free", z: (Number(P.zoom) || 100) / 100, px: Number(P.panX) || 0, py: Number(P.panY) || 0,
             yaw: P.lockPose ? P.poseYaw ?? 15 : 15, head: P.lockPose ? [Number(P.headYaw) || 0, Number(P.headPitch) || 0] : [0, 0] });
@@ -2936,12 +2936,12 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       // NPC models, rendered from the real geometry + skin at screen resolution (framed: 150% tall and clipped, like message_model_window)
       for (const m of models) {
         const pw = Math.max(8, Math.round(m.w * g)), ph = Math.max(8, Math.round(m.h * g)), key = `model|${pw}x${ph}|${m.free}|${m.yaw}|${m.head}|${m.z}|${m.px}|${m.py}|${g}`;
-        // same maths as the exported message_model: a control Z× the box (×1.5 tall when framed), centred, nudged by the pan
+        // same maths as the exported message_model: a control Z× the box (×1.5 tall when framed), centered, nudged by the pan
         const M = m.free ? Math.round(Math.max(pw, ph) * Math.max(1, m.z)) : 0; // free models may spill past the box
         let mc = opts.cache && opts.cache.get(key);
         if (!mc) {
           // free: matched to an in-game capture (box 160×201 GUI, zoom 142%): the model is ~1.013× the control's height, its top 0.41 of its
-          // height above the control's centre, and a hair left of centre. Framed: matched earlier against the vanilla portrait window.
+          // height above the control's center, and a hair left of center. Framed: matched earlier against the vanilla portrait window.
           const hm = m.free ? ph * FREE_H * m.z : ph * 1.1 * m.z, top = m.free ? ph / 2 - FREE_TOP * hm + m.py * g : ph / 2 - 0.51 * ph * m.z + m.py * g;
           const dx = m.px * g + (m.free ? FREE_DX * hm : 0);
           const im = G.CLBModel3D.render(opts.npcGeo || G.CLBAssets.npcGeo, opts.npcSkin, pw + 2 * M, ph + 2 * M, { height: hm, top: top + M, dx, yaw: m.yaw, pitch: m.free ? 4 : 6, head: m.head });
@@ -3024,7 +3024,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
         if (o.icon === "top") kids.push({ icon: { type: "image", size: [isz, isz], anchor_from: "top_middle", anchor_to: "top_middle", offset: [0, 4 + lift], layer: 1, bindings: o.iconBinds } });
         const textX = o.icon === "left" ? isz + 7 : 3, anchor = o.icon === "top" ? "bottom_middle" : o.align === "left" ? "left_middle" : o.align === "right" ? "right_middle" : "center";
         const lab = label(o.text, o.color, { shadow: !!o.shadow, text_alignment: o.align || "center", size: ["100%", "default"], anchor_from: anchor, anchor_to: anchor, offset: [0, 0], ...(o.scale && o.scale !== 1 ? { font_scale_factor: o.scale } : {}), ...(o.textBinds ? { bindings: o.textBinds } : {}) });
-        // an icon on the left keeps the same space free on the right, so centred labels stay centred on the whole button
+        // an icon on the left keeps the same space free on the right, so centered labels stay centered on the whole button
         const sym = o.icon === "left" && o.align !== "left";
         kids.push({ label_clip: { type: "panel", size: [sym ? `100% - ${2 * textX}px` : `100% - ${textX + 3}px`, o.icon === "top" ? 10 : "100%"], anchor_from: o.icon === "top" ? "bottom_middle" : sym ? "center" : "left_middle", anchor_to: o.icon === "top" ? "bottom_middle" : sym ? "center" : "left_middle",
           offset: [o.icon === "top" || sym ? 0 : textX, o.icon === "top" ? -3 + lift : lift], clips_children: true, layer: 1, controls: [{ label: lab }] } });
@@ -3061,7 +3061,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
           // collapses it in game). Like vanilla's tooltip backgrounds, the frame takes the content's size ("100%sm" = its
           // sibling, the inner panel) plus padding, and the parent takes the largest child ("100%cm"), which is the frame.
           const fd = frameDef(n, frame), wrap = { type: "panel", size: [fitW ? plus("100%sm") : "100%", fitH ? plus("100%sm") : "100%"], layer: 0, controls: [] };
-          if (P.frameFront) { // edges + corners above all the content (layers add up: 0 + 400); the centre fill stays behind it
+          if (P.frameFront) { // edges + corners above all the content (layers add up: 0 + 400); the center fill stays behind it
             const fi = fd.controls.findIndex((c) => c.fill);
             if (fi >= 0) wrap.controls.push({ frame_fill: { type: "panel", size: fd.size, layer: 0, controls: [fd.controls.splice(fi, 1)[0]] } });
             fd.layer = 400;
@@ -3248,7 +3248,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
         const bg = A(n.art.bg), box = { type: bg ? "image" : "panel", ...(bg ? { texture: tex(bg, "default") } : {}), size: [sz(P.w), sz(P.h)], layer: 1 };
         if (P.textStyle === "game") box.controls = [{ dialog_panel: { type: "panel", size: ["100%", "100%"], $virtual_keyboard_buffer_control: "text_scroll", controls: [{ "text_scroll@npc_interact.text_scroll": {} }] } }];
         else {
-          // styled: our own label bound to #dialogtext (as shipped Edu worlds do), so colour and size are ours
+          // styled: our own label bound to #dialogtext (as shipped Edu worlds do), so color and size are ours
           const lab = label("#dialogtext", P.color, { size: ["100% - 6px", "default"], anchor_from: "top_left", anchor_to: "top_left", bindings: [{ binding_name: "#dialogtext" }] });
           if (P.shadow) lab.shadow = true; if (Number(P.scale) && Number(P.scale) !== 1) lab.font_scale_factor = Number(P.scale);
           ui[`${name}_text`] = { type: "panel", size: ["100%", "100%c"], controls: [{ text: lab }] };
@@ -3262,7 +3262,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
         const bg = A(n.art.bg), Z = Math.max(0.25, (Number(P.zoom) || 100) / 100), px = Number(P.panX) || 0, py = Number(P.panY) || 0, moved = Z !== 1 || px || py;
         const pct = (v) => `${Math.round(v * 1000) / 10}%`;
         if (P.mode === "free") {
-          // message_model at Z× the box, centred and nudged; not clipped, so a big character can spill past the box
+          // message_model at Z× the box, centered and nudged; not clipped, so a big character can spill past the box
           const model = { size: [pct(Z), pct(Z)], layer: 1 }; if (px || py) model.offset = [px, py];
           ui[name] = { type: bg ? "image" : "panel", ...(bg ? { texture: tex(bg, "default") } : {}), size: [sz(P.w), sz(P.h)], layer: 1, controls: [{ "model@npc_interact.message_model": model }] };
           return `${name}@${REF(name)}`;
@@ -3273,7 +3273,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
             { holder: { type: "panel", size: ["100% + 224px", "100%"], anchor_from: "left_middle", anchor_to: "left_middle", layer: 1, controls: [{ "model@npc_interact.message_model_window": {} }] } }] };
           return `${name}@${REF(name)}`;
         }
-        // zoomed / panned: rebuild the vanilla window (grey fill, clipper, message_model, reader button) with our own model size + offset
+        // zoomed / panned: rebuild the vanilla window (gray fill, clipper, message_model, reader button) with our own model size + offset
         const model = { size: [pct(Z), pct(1.5 * Z)], layer: 1 }; if (px || py) model.offset = [px, py];
         ui[name] = { type: "image", texture: bg ? tex(bg, "default") : "textures/ui/Banners", size: [sz(P.w), sz(P.h)], layer: 1, controls: [
           { clip: { type: "panel", size: ["100%", "100% - 1px"], anchor_from: "top_left", anchor_to: "top_left", clips_children: true, layer: 1, controls: [{ "model@npc_interact.message_model": model }] } },
@@ -3600,7 +3600,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
   const $ = (id) => document.getElementById(id);
   const STORE = "clui-builder-project", PREF = "clui-builder-prefs";
   const STEPS = ["type", "layout", "design", "export"];
-  const state = { p: null, step: "type", selId: "", artId: "", artCtx: null, stateIdx: 0, primary: "#febd01ff", secondary: "#00000000",
+  const state = { p: null, step: "type", selId: "", artId: "", artCtx: null, stateIdx: 0, primary: "#febd01ff", secondary: "#ffffffff",
     editor: null, hot: null, scrollY: 0, zoom: "window", view: { stage: 1, "mini-stage": 1, pop: 1 }, pvState: "default", xtab: "script", codeFile: "", collapsed: {}, cache: new Map(), vanillaImgs: new Map() };
 
   // ------------------------------------------------------------------ helpers
@@ -4009,7 +4009,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     for (const [hx, hy, c] of [[L0, T0, "nw"], [R0, T0, "ne"], [L0, B0, "sw"], [R0, B0, "se"]]) if (Math.abs(cxp - hx) <= R && Math.abs(cyp - hy) <= R) return c;
     return null;
   }
-  /** Drag the model (pan) or a corner (zoom; the opposite corner stays put). The model scales about the box centre + pan. */
+  /** Drag the model (pan) or a corner (zoom; the opposite corner stays put). The model scales about the box center + pan. */
   function edModel(d, n, dx, dy, e) {
     const P = n.props, m0 = d.m0, p0 = d.props0;
     if (d.type === "model") {
@@ -4090,7 +4090,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     rerenderStage();
   }
   function edResize(d, n, dx, dy, e) {
-    const f = d.root ? 2 : 1, H = d.hd; // a centred root window grows on both sides
+    const f = d.root ? 2 : 1, H = d.hd; // a centered root window grows on both sides
     let w = d.b0.w, h = d.b0.h;
     if (H.includes("e")) w = d.b0.w + dx * f; if (H.includes("w")) w = d.b0.w - dx * f;
     if (H.includes("s")) h = d.b0.h + dy * f; if (H.includes("n")) h = d.b0.h - dy * f;
@@ -4157,8 +4157,8 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       edStatus(`Reorder in ${sb.node.name}  ·  hold still over another container (or Alt) to move it there  ·  Esc: cancel`);
       return;
     }
-    // panel / window: change the offset from the anchor, snapping to the parent's edges / centre and to other elements
-    // (line up with an edge or centre, or sit right next to it: above, below, left, right)
+    // panel / window: change the offset from the anchor, snapping to the parent's edges / center and to other elements
+    // (line up with an edge or center, or sit right next to it: above, below, left, right)
     let left = d.b0.ax - d.pin.x + dx, top = d.b0.ay - d.pin.y + dy;
     if (!(e.ctrlKey || e.metaKey)) {
       const T = Math.max(1, SNAP * 2 / d.k), w = d.b0.w, hh = d.b0.h, ax0 = d.pin.x + left, ay0 = d.pin.y + top;
@@ -4211,7 +4211,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       if (n && d.type === "resize") n.props = d.props0;
       if (n && d.type === "move") { n.props.x = d.props0.x; n.props.y = d.props0.y; }
       if (n && (d.type === "model" || d.type === "zoom")) Object.assign(n.props, d.props0);
-      renderStage(); edStatus("Cancelled."); return;
+      renderStage(); edStatus("Canceled."); return;
     }
     if (d.drop) {
       const from = B.parentOf(state.p, d.id), fi = from.children.indexOf(n), changed = !(d.drop.into === from.id && (d.drop.index === fi || d.drop.index === fi + 1));
@@ -4349,8 +4349,8 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     if (withText === "text") kids.push(field("Text", h("textarea", { rows: 2, onchange: (e) => change(() => (Pp.text = e.target.value))() }, Pp.text || "")));
     if (withText === "title") kids.push(field(state.p.type === "npc" ? "NPC name (set by the dialogue / script)" : "Title (set by the script)", txt(state.p.title, change((v) => (state.p.title = v))), "Used in the preview and written into the exported script."));
     if (withText === "body") kids.push(field("Body text (set by the script)", h("textarea", { rows: 3, onchange: (e) => change(() => (state.p.body = e.target.value))() }, state.p.body || ""), "Used in the preview and the exported script."));
-    kids.push(h("div", { class: "row2" }, field("Colour", color(Pp.color, change((v) => (Pp.color = v)))), field("Size", selectEl(Pp.scale || 1, [[0.5, "50%"], [0.75, "75%"], [1, "100%"], [1.25, "125%"], [1.5, "150%"], [2, "200%"]], change((v) => (Pp.scale = Number(v)))))));
-    if ("align" in Pp) kids.push(field("Align", seg(Pp.align, [["left", "Left"], ["center", "Centre"], ["right", "Right"]], change((v) => (Pp.align = v)))));
+    kids.push(h("div", { class: "row2" }, field("Color", color(Pp.color, change((v) => (Pp.color = v)))), field("Size", selectEl(Pp.scale || 1, [[0.5, "50%"], [0.75, "75%"], [1, "100%"], [1.25, "125%"], [1.5, "150%"], [2, "200%"]], change((v) => (Pp.scale = Number(v)))))));
+    if ("align" in Pp) kids.push(field("Align", seg(Pp.align, [["left", "Left"], ["center", "Center"], ["right", "Right"]], change((v) => (Pp.align = v)))));
     if ("shadow" in Pp) kids.push(chk("Text shadow", Pp.shadow, change((v) => (Pp.shadow = v))));
     return kids;
   }
@@ -4386,7 +4386,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     }
     if (n.kind !== "button" && !["toggle", "slider", "dropdown", "input"].includes(n.kind)) box.append(field("Element name", txt(n.name, change((v) => (n.name = B.uniqueName(p, v || n.name, n)))), "Used for the JSON UI element name."));
     if (n === p.root) box.append(h("div", { class: "section" }, h("h3", {}, "Layout"),
-      field("Screen layout", seg(Pp.mode || "window", [["window", "Window (centred box)"], ["screen", "Full screen"]], change((v) => { Pp.mode = v; if (v === "screen") { Pp.w = B.FILL; Pp.h = B.FILL; } else if (Pp.w.m === "fill") { Pp.w = B.px(240); Pp.h = B.FIT; } }))),
+      field("Screen layout", seg(Pp.mode || "window", [["window", "Window (centered box)"], ["screen", "Full screen"]], change((v) => { Pp.mode = v; if (v === "screen") { Pp.w = B.FILL; Pp.h = B.FILL; } else if (Pp.w.m === "fill") { Pp.w = B.px(240); Pp.h = B.FIT; } }))),
       Pp.mode === "screen" ? h("p", { class: "help" }, "The root covers the whole screen. Pin elements to screen edges (anchors) and size them with % of the screen, e.g. a bar 100% wide and 32% tall at the bottom.") : null,
       Pp.mode === "screen" ? field(`Extra dim over the world (${Math.round((Pp.dim || 0) * 100)}%; Minecraft already dims it a little)`, h("input", { type: "range", min: 0, max: 0.9, step: 0.05, value: Pp.dim || 0, onchange: (e) => change(() => (Pp.dim = Number(e.target.value)))() })) : null));
     if (Pp.w && Pp.h && !(n === p.root && Pp.mode === "screen")) {
@@ -4398,7 +4398,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       box.append(h("div", { class: "section" }, h("h3", {}, "Position in ", par.name),
         h("div", { class: "pos-row" }, h("div", { class: "anchor-grid", role: "group", "aria-label": "Anchor" }, ...ANCHORS.map((an) => h("button", { type: "button", title: an.replace("_", " "), "aria-pressed": String(a === an), onclick: change(() => (Pp.anchor = an)) }))),
           h("div", { class: "xy" }, "X", num(Number(Pp.x) || 0, change((v) => (Pp.x = v))), "Y", num(-(Number(Pp.y) || 0) || 0, change((v) => (Pp.y = -v || 0))))),
-        h("p", { class: "help" }, "Pick the corner, edge or centre to pin to, then nudge it: X + moves right, Y + moves up (GUI pixels). Or drag it on the preview, or use the arrow keys (Shift: 8 px).")));
+        h("p", { class: "help" }, "Pick the corner, edge or center to pin to, then nudge it: X + moves right, Y + moves up (GUI pixels). Or drag it on the preview, or use the arrow keys (Shift: 8 px).")));
       const j = par.children.indexOf(n), last = par.children.length - 1;
       const ob = (label, how, title, dis) => h("button", { type: "button", class: "btn small", title, disabled: dis, onclick: () => arrange(n, how) }, label);
       box.append(h("div", { class: "section" }, h("h3", {}, "Order (front to back)"),
@@ -4410,13 +4410,13 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       box.append(h("div", { class: "section" }, h("h3", {}, "Background"),
         field("Style", seg(Pp.bgStyle || "nine", [["nine", "Nine-slice art"], ["frame", "Decorated frame"]], change((v) => { Pp.bgStyle = v; B.ensureParts(p, n); }))),
         Pp.bgStyle === "frame" ? h("div", {}, chk("Frame in front of the content", Pp.frameFront, change((v) => { if (v) Pp.frameFront = true; else delete Pp.frameFront; })),
-          h("small", { class: "help" }, "The border draws over everything inside it (e.g. an NPC that reaches the edge); the centre fill stays behind.")) : null,
+          h("small", { class: "help" }, "The border draws over everything inside it (e.g. an NPC that reaches the edge); the center fill stays behind.")) : null,
         fr ? h("p", { class: "help" }, `Corners ${fr.cw}×${fr.ch}px are mirrored; the edge (${fr.et}px thick) is flipped and rotated for each side. Content is inset ${fr.inset}px by the frame.`) : h("p", { class: "help" }, "One texture that stretches to any size. For wide, patterned borders choose Decorated frame."),
         fr ? field("Edges", seg(Pp.edgeMode || "tile", [["tile", "Repeat (tiled)"], ["stretch", "Stretch"]], change((v) => (Pp.edgeMode = v)))) : null,
         fr ? field("Overhang (frame sits this many px outside the box)", num(Pp.overhang || 0, change((v) => (Pp.overhang = Math.max(0, Math.min(32, v)))), { min: 0 })) : null));
       const sec = h("div", { class: "section" }, h("h3", {}, "Inside"), field(fr ? "Padding (extra, inside the frame)" : "Padding", num(Pp.pad || 0, change((v) => (Pp.pad = Math.max(0, v))), { min: 0 })));
       if (n.kind === "stack") sec.append(field("Direction", seg(Pp.dir, [["vertical", "Top to bottom"], ["horizontal", "Left to right"]], change((v) => (Pp.dir = v)))),
-        h("div", { class: "row2" }, field("Gap", num(Pp.gap, change((v) => (Pp.gap = Math.max(0, v))), { min: 0 })), field("Align", selectEl(Pp.align, [["start", Pp.dir === "horizontal" ? "Top" : "Left"], ["center", "Centre"], ["end", Pp.dir === "horizontal" ? "Bottom" : "Right"]], change((v) => (Pp.align = v))))));
+        h("div", { class: "row2" }, field("Gap", num(Pp.gap, change((v) => (Pp.gap = Math.max(0, v))), { min: 0 })), field("Align", selectEl(Pp.align, [["start", Pp.dir === "horizontal" ? "Top" : "Left"], ["center", "Center"], ["end", Pp.dir === "horizontal" ? "Bottom" : "Right"]], change((v) => (Pp.align = v))))));
       box.append(sec);
     }
     const spec = h("div", { class: "section" }, h("h3", {}, "Settings"));
@@ -4443,7 +4443,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       add(field("Slider look", seg(B.customSlider(n) ? "custom" : "vanilla", [["custom", "Custom art (editable)"], ["vanilla", "Game's slider"]], change((v) => { Pp.sliderArt = v; if (v === "custom") B.ensureParts(p, n); })),
         B.customSlider(n) ? "Track, fill and handle start as copies of the game's slider; edit them in Design." : "Uses the game's own slider textures."));
       add(field("Toggle style", seg(Pp.toggleStyle, [["card", "Checkbox card"], ["vanilla", "Classic switch"]], change((v) => (Pp.toggleStyle = v)))));
-      add(h("div", { class: "row2" }, field("Gap", num(Pp.gap, change((v) => (Pp.gap = Math.max(0, v))))), field("Card text colour", color(Pp.color, change((v) => (Pp.color = v))))));
+      add(h("div", { class: "row2" }, field("Gap", num(Pp.gap, change((v) => (Pp.gap = Math.max(0, v))))), field("Card text color", color(Pp.color, change((v) => (Pp.color = v))))));
       add(chk("Scroll when long", Pp.scroll, change((v) => (Pp.scroll = v)))); if (Pp.scroll) add(field("Scroll area height", num(Pp.scrollH, change((v) => (Pp.scrollH = Math.max(40, v))))));
       add(h("p", { class: "help" }, "Sliders, dropdowns and text fields are drawn by the game (white labels), so they sit in a dark well you can restyle."));
     }
@@ -4461,12 +4461,12 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       if (n.kind === "input") add(field("Placeholder", txt(Pp.placeholder, change((v) => (Pp.placeholder = v)))), field("Default text", txt(Pp.def, change((v) => (Pp.def = v)))));
       add(h("p", { class: "help" }, `Value ${B.controlsOf(p).indexOf(n)} in res.formValues.`));
     }
-    if (n.kind === "submit") { add(field("Button text (set by the script)", txt(Pp.text, change((v) => (Pp.text = v))))); add(h("div", { class: "row2" }, field("Colour", color(Pp.color, change((v) => (Pp.color = v)))), h("div", {}, chk("Shadow", Pp.shadow, change((v) => (Pp.shadow = v)))))); }
+    if (n.kind === "submit") { add(field("Button text (set by the script)", txt(Pp.text, change((v) => (Pp.text = v))))); add(h("div", { class: "row2" }, field("Color", color(Pp.color, change((v) => (Pp.color = v)))), h("div", {}, chk("Shadow", Pp.shadow, change((v) => (Pp.shadow = v)))))); }
     if (n.kind === "dialogue") {
       add(field("Dialogue text (preview + dialogue file)", h("textarea", { rows: 4, onchange: (e) => change(() => (Pp.text = e.target.value))() }, Pp.text)));
-      add(field("Text", seg(Pp.textStyle || "styled", [["styled", "Styled (your colour)"], ["game", "Game text box"]], change((v) => (Pp.textStyle = v)))));
-      if (Pp.textStyle !== "game") add(h("div", { class: "row2" }, field("Colour", color(Pp.color, change((v) => (Pp.color = v)))), field("Size", selectEl(Pp.scale || 1, [[0.75, "75%"], [1, "100%"], [1.25, "125%"], [1.5, "150%"]], change((v) => (Pp.scale = Number(v)))))), chk("Text shadow", Pp.shadow, change((v) => (Pp.shadow = v))));
-      else add(h("p", { class: "help" }, "The game draws this text in its own dark colour; keep the bubble light."));
+      add(field("Text", seg(Pp.textStyle || "styled", [["styled", "Styled (your color)"], ["game", "Game text box"]], change((v) => (Pp.textStyle = v)))));
+      if (Pp.textStyle !== "game") add(h("div", { class: "row2" }, field("Color", color(Pp.color, change((v) => (Pp.color = v)))), field("Size", selectEl(Pp.scale || 1, [[0.75, "75%"], [1, "100%"], [1.25, "125%"], [1.5, "150%"]], change((v) => (Pp.scale = Number(v)))))), chk("Text shadow", Pp.shadow, change((v) => (Pp.shadow = v))));
+      else add(h("p", { class: "help" }, "The game draws this text in its own dark color; keep the bubble light."));
     }
     if (n.kind === "portrait") {
       add(field("Model", seg(Pp.mode || "clip", [["clip", "Framed (clipped to the box)"], ["free", "Free (big, can bleed past edges)"]], change((v) => (Pp.mode = v)))),
@@ -4503,7 +4503,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     }
     if (n.kind === "npcbuttons") {
       add(field("Layout", seg(Pp.layout || "grid", [["grid", "Grid (3 across)"], ["list", "List"], ["row", "Row"]], change((v) => (Pp.layout = v)))));
-      add(h("div", { class: "row2" }, Pp.layout === "row" ? field("Button width", num(Pp.itemW || 80, change((v) => (Pp.itemW = Math.max(16, v))))) : null, field("Button height", num(Pp.itemH, change((v) => (Pp.itemH = Math.max(10, v))))), field("Gap", num(Pp.gap, change((v) => (Pp.gap = Math.max(0, v)))))), h("div", { class: "row2" }, field("Text colour", color(Pp.color, change((v) => (Pp.color = v)))), h("div", {}, chk("Shadow", Pp.shadow, change((v) => (Pp.shadow = v))))));
+      add(h("div", { class: "row2" }, Pp.layout === "row" ? field("Button width", num(Pp.itemW || 80, change((v) => (Pp.itemW = Math.max(16, v))))) : null, field("Button height", num(Pp.itemH, change((v) => (Pp.itemH = Math.max(10, v))))), field("Gap", num(Pp.gap, change((v) => (Pp.gap = Math.max(0, v)))))), h("div", { class: "row2" }, field("Text color", color(Pp.color, change((v) => (Pp.color = v)))), h("div", {}, chk("Shadow", Pp.shadow, change((v) => (Pp.shadow = v))))));
       if (Pp.layout !== "grid") add(h("p", { class: "help" }, "List and Row place up to 6 buttons with collection_index; unused slots hide."));
     }
     if (["text", "title"].includes(n.kind) && n.art.plate) add(field("Plate padding", num(Pp.platePad ?? 4, change((v) => (Pp.platePad = Math.max(0, v))), { min: 0 })));
@@ -4527,11 +4527,11 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
 
   // ------------------------------------------------------------------ STEP 3: design
   const TOOL_INFO = {
-    pencil: ["Pencil", "Draw pixels. Left click = left colour, right click = right colour."], eraser: ["Eraser", "Make pixels transparent."], line: ["Line", "Drag to draw a straight line."],
-    rect: ["Rectangle", "Drag to draw a box. Hold Shift for a filled box."], fill: ["Fill", "Click to fill an area with the left colour (right click: right colour)."],
-    picker: ["Pick colour", "Click a pixel to pick its colour. Hold Alt with any tool for this."], select: ["Select", "Drag a box. Drag inside it to move, Ctrl+drag to copy, arrow keys nudge, Enter places, Esc cancels."],
+    pencil: ["Pencil", "Draw pixels. Left click = left color, right click = right color."], eraser: ["Eraser", "Make pixels transparent."], line: ["Line", "Drag to draw a straight line."],
+    rect: ["Rectangle", "Drag to draw a box. Hold Shift for a filled box."], fill: ["Fill", "Click to fill an area with the left color (right click: right color)."],
+    picker: ["Pick color", "Click a pixel to pick its color. Hold Alt with any tool for this."], select: ["Select", "Drag a box. Drag inside it to move, Ctrl+drag to copy, arrow keys nudge, Enter places, Esc cancels."],
     move: ["Move layer", "Drag to slide the whole layer."],
-    gradient: ["Gradient", "Drag across an area: left colour where you start, right colour where you let go (right-drag swaps). Fills the selection, or the area you start on."],
+    gradient: ["Gradient", "Drag across an area: left color where you start, right color where you let go (right-drag swaps). Fills the selection, or the area you start on."],
   };
   function renderToolbar() {
     const tb = $("toolbar"), ed = state.editor, I = G.CLUIIcons, st = ed.st; tb.innerHTML = "";
@@ -4547,7 +4547,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     const set = (key, val) => () => { st[key] = val; renderToolbar(); ed.render(); }, flip = (key) => () => { st[key] = !st[key]; renderToolbar(); ed.render(); };
     const opts = [];
     if (st.tool === "rect") opts.push(h("span", { class: "opt-seg" }, chip(!st.rectFilled, "outline", "Outline", "Only the edge", set("rectFilled", false)), chip(st.rectFilled, "filled", "Filled", "The whole box", set("rectFilled", true))));
-    if (st.tool === "fill") opts.push(h("span", { class: "opt-seg" }, chip(st.fillContiguous, "touching", "Touching", "Only connected pixels", set("fillContiguous", true)), chip(!st.fillContiguous, "allColor", "All matching", "That colour everywhere", set("fillContiguous", false))));
+    if (st.tool === "fill") opts.push(h("span", { class: "opt-seg" }, chip(st.fillContiguous, "touching", "Touching", "Only connected pixels", set("fillContiguous", true)), chip(!st.fillContiguous, "allColor", "All matching", "That color everywhere", set("fillContiguous", false))));
     opts.push(...G.CLEditor.paintOptions(st, h, chip, () => { renderToolbar(); ed.render(); }));
     if (["pencil", "eraser", "line", "rect", "fill"].includes(st.tool)) opts.push(chip(st.mirrorX, "mirrorX", "Mirror ↔", "Also draw mirrored left–right", flip("mirrorX")), chip(st.mirrorY, "mirrorY", "Mirror ↕", "Also draw mirrored top–bottom", flip("mirrorY")));
     if (st.tool === "select") opts.push(chip(null, "selectAll", "Select all", "Ctrl+A", () => ed.selectAll()), chip(null, "deselect", "Deselect", "Esc", () => { ed.commitFloating(); st.sel = null; ed.render(); }));
@@ -4617,7 +4617,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     selectArt(n.art[part.key], { nodeId: n.id, part: part.key });
   }
 
-  // ------------------------------------------------------------------ view toolbars (zoom / fit / centre / pop out)
+  // ------------------------------------------------------------------ view toolbars (zoom / fit / center / pop out)
   const ZMIN = 0.25, ZMAX = 8;
   function vbtn(icon, label, title, fn, pressed, extra = {}) {
     return h("button", { type: "button", class: "vb" + (label ? "" : " icon"), title, "aria-label": title, "aria-pressed": pressed == null ? null : String(!!pressed), onclick: fn, html: G.CLBIcons[icon] || "", ...extra }, label ? h("span", {}, label) : null);
@@ -4627,7 +4627,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     const ed = state.editor, st = ed.st, box = $("ed-view"); if (!box) return; box.innerHTML = "";
     const a = art(), popped = $("dlg-editor").open;
     box.append(vbtn("vZoomOut", "", "Zoom out (−)", () => ed.zoomBy(0.8)), h("span", { class: "vb-zoom", title: "Screen pixels per texture pixel" }, a ? `${st.zoom}×` : "–"), vbtn("vZoomIn", "", "Zoom in (+)", () => ed.zoomBy(1.25)),
-      vbtn("vFit", "Fit", "Fit the art to the pane and centre it (0)", () => ed.fit()), vbtn("vCenter", "Centre", "Centre the art without changing the zoom", () => ed.center()), vsep(),
+      vbtn("vFit", "Fit", "Fit the art to the pane and center it (0)", () => ed.fit()), vbtn("vCenter", "Center", "Center the art without changing the zoom", () => ed.center()), vsep(),
       h("label", { class: "vb-sel", title: "Background behind the art" }, h("span", {}, "Bg"), selectEl(st.bg, [["checker", "Checker"], ["dark", "Dark"], ["light", "Light"], ["world", "Sky"]], (v) => { st.bg = v; ed.render(); })),
       vbtn("vOnion", "Onion", "Show the default state faintly under this one (pick another state first)", () => { st.onion = !st.onion; ed.render(); renderEdView(); }, st.onion, { disabled: !a || a.states.length < 2 || state.stateIdx === 0 ? "" : null }), vsep(),
       vbtn("vPop", popped ? "Dock" : "Pop out", popped ? "Put the editor back in the page" : "Open the editor big, over the page", () => popEditor(!popped), popped));
@@ -4636,7 +4636,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     const ids = { stage: "stage-view", "mini-stage": "mini-view" }, box = $(ids[stageId]); if (!box) return; box.innerHTML = "";
     const m = state.view[stageId] || 1, zoom = (f) => setView(stageId, f === 0 ? 1 : Math.max(ZMIN, Math.min(ZMAX, m * f)));
     box.append(vbtn("vZoomOut", "", "Zoom out (Ctrl+wheel)", () => zoom(0.8)), h("span", { class: "vb-zoom" }, `${Math.round(m * 100)}%`), vbtn("vZoomIn", "", "Zoom in (Ctrl+wheel)", () => zoom(1.25)),
-      vbtn("vFit", "Fit", "Fit the screen to the pane", () => zoom(0)), vbtn("vCenter", "Centre", "Scroll back to the middle", () => centerStage($(stageId))));
+      vbtn("vFit", "Fit", "Fit the screen to the pane", () => zoom(0)), vbtn("vCenter", "Center", "Scroll back to the middle", () => centerStage($(stageId))));
     if (stageId === "mini-stage") box.append(vsep(), vbtn("vOutline", state.zoom === "window" ? "Window" : "Screen", "Switch between the window and the whole screen", () => setZoomMode(state.zoom === "window" ? "screen" : "window")),
       vsep(), vbtn("vPop", pop && !pop.closed ? "Focus pop-out" : "Pop out", "Open the live preview in its own browser window (e.g. on a second screen)", openPopView, pop && !pop.closed));
   }
@@ -4681,7 +4681,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       #st canvas{margin:auto;image-rendering:pixelated;display:block;flex:none} #status{position:absolute;bottom:0;left:0;right:0;height:28px;box-sizing:border-box;padding:5px 12px;font-size:12px;color:#94a3b8;border-top:1px solid #24324d}
       </style></head><body><header><b id="t"></b>
       <button data-s="default">Default</button><button data-s="hover">Hover</button><button data-s="pressed">Pressed</button>
-      <button id="zo" title="Zoom out (Ctrl+wheel)">−</button><span class="z" id="z"></span><button id="zi" title="Zoom in (Ctrl+wheel)">+</button><button id="fit">Fit</button><button id="ctr">Centre</button><button id="ws"></button></header>
+      <button id="zo" title="Zoom out (Ctrl+wheel)">−</button><span class="z" id="z"></span><button id="zi" title="Zoom in (Ctrl+wheel)">+</button><button id="fit">Fit</button><button id="ctr">Center</button><button id="ws"></button></header>
       <div id="st"></div><div id="status">Click an element to edit its art in the main window.</div></body></html>`);
     d.close();
     d.querySelectorAll("[data-s]").forEach((b) => (b.onclick = () => { state.pvState = b.dataset.s; document.querySelectorAll("[data-pvstate]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.pvstate === state.pvState))); renderMini(); }));
@@ -4717,19 +4717,19 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     const info = PAL.byId[p.paletteId];
     const sw = h("div", { class: "palette" });
     p.palette.forEach((c) => { const full = c.color.length === 7 ? c.color + "ff" : c.color;
-      const b = h("button", { type: "button", class: "pal-sw", title: `${c.color}\nLeft click: left colour · right click: right colour · Alt+click: remove`, "data-primary": String(full === state.primary), "data-secondary": String(full === state.secondary),
+      const b = h("button", { type: "button", class: "pal-sw", title: `${c.color}\nLeft click: left color · right click: right color · Alt+click: remove`, "data-primary": String(full === state.primary), "data-secondary": String(full === state.secondary),
         onclick: (e) => { if (e.altKey) { p.palette = p.palette.filter((x) => x !== c); p.paletteId = "custom"; commit(true); renderColours(); return; } setColor("primary", full); }, oncontextmenu: (e) => { e.preventDefault(); setColor("secondary", full); } });
       b.style.setProperty("--c", hex6(full)); sw.append(b); });
     const a = art();
     box.append(field("Palette", palSel), info ? h("p", { class: "pal-note" }, `${info.note} By ${info.by}.`) : h("span", { hidden: true }), sw, // (append() would print a null as "null")
-      h("div", { class: "cur-row" }, "Left", h("input", { type: "color", value: hex6(state.primary), "aria-label": "Left colour", onchange: (e) => setColor("primary", e.target.value + alphaOf(state.primary).toString(16).padStart(2, "0")) }),
-        "Right", h("input", { type: "color", value: hex6(state.secondary), "aria-label": "Right colour", onchange: (e) => setColor("secondary", e.target.value + "ff") }),
+      h("div", { class: "cur-row" }, "Left", h("input", { type: "color", value: hex6(state.primary), "aria-label": "Left color", onchange: (e) => setColor("primary", e.target.value + alphaOf(state.primary).toString(16).padStart(2, "0")) }),
+        "Right", h("input", { type: "color", value: hex6(state.secondary), "aria-label": "Right color", onchange: (e) => setColor("secondary", e.target.value + "ff") }),
         h("button", { type: "button", class: "btn small", title: "Swap (X)", onclick: () => { [state.primary, state.secondary] = [state.secondary, state.primary]; renderColours(); } }, "⇄")),
-      h("div", { class: "cur-row" }, "Alpha", h("input", { type: "range", min: 0, max: 255, value: alphaOf(state.primary), "aria-label": "Left colour alpha", oninput: (e) => { state.primary = hex6(state.primary) + Number(e.target.value).toString(16).padStart(2, "0"); e.target.nextSibling.textContent = e.target.value; } }), h("span", { class: "mono" }, String(alphaOf(state.primary)))),
+      h("div", { class: "cur-row" }, "Alpha", h("input", { type: "range", min: 0, max: 255, value: alphaOf(state.primary), "aria-label": "Left color alpha", oninput: (e) => { state.primary = hex6(state.primary) + Number(e.target.value).toString(16).padStart(2, "0"); e.target.nextSibling.textContent = e.target.value; } }), h("span", { class: "mono" }, String(alphaOf(state.primary)))),
       h("div", { class: "row-actions" },
-        h("button", { type: "button", class: "btn small", onclick: () => { p.palette.push({ id: K.uid(), name: hex6(state.primary), color: hex6(state.primary), role: "" }); p.paletteId = "custom"; commit(true); renderColours(); } }, "+ Add left colour"),
-        h("button", { type: "button", class: "btn small", disabled: !a, title: "Snap every pixel of the selected art to the nearest palette colour", onclick: () => recolour(a ? [a] : []) }, "Snap art to palette"),
-        h("button", { type: "button", class: "btn small", title: "Snap every used texture to the nearest palette colour", onclick: () => recolour(state.p.assets.filter((x) => B.artUsage(state.p).has(x.id))) }, "Snap all")));
+        h("button", { type: "button", class: "btn small", onclick: () => { p.palette.push({ id: K.uid(), name: hex6(state.primary), color: hex6(state.primary), role: "" }); p.paletteId = "custom"; commit(true); renderColours(); } }, "+ Add left color"),
+        h("button", { type: "button", class: "btn small", disabled: !a, title: "Snap every pixel of the selected art to the nearest palette color", onclick: () => recolour(a ? [a] : []) }, "Snap art to palette"),
+        h("button", { type: "button", class: "btn small", title: "Snap every used texture to the nearest palette color", onclick: () => recolour(state.p.assets.filter((x) => B.artUsage(state.p).has(x.id))) }, "Snap all")));
   }
   function setColor(which, hex) { if (hex.length === 7) hex += "ff"; state[which] = hex; renderColours(); }
   function recolour(assets) {
@@ -4767,7 +4767,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       const W = h("input", { type: "number", value: a.w, min: 1, max: 256, class: "num" }), H = h("input", { type: "number", value: a.h, min: 1, max: 256, class: "num" });
       box.append(h("div", { class: "section" }, h("h3", {}, "Canvas size"),
         h("div", { class: "row2" }, field("Width", W), field("Height", H)),
-        h("div", { class: "row-actions" }, h("button", { type: "button", class: "btn small", onclick: () => resizeArt(a, Number(W.value), Number(H.value)) }, "Resize canvas (keep pixels, centred)"))));
+        h("div", { class: "row-actions" }, h("button", { type: "button", class: "btn small", onclick: () => resizeArt(a, Number(W.value), Number(H.value)) }, "Resize canvas (keep pixels, centered)"))));
       const d = a.density || 1;
       box.append(h("div", { class: "section" }, h("h3", {}, "Resolution"),
         h("p", { class: "density-explain" }, h("b", {}, `${d}× density`), ` · ${d} texture px per GUI px. This art is drawn ${Math.round(a.w / d)}×${Math.round(a.h / d)} GUI px at its natural size${a.type === "nine" ? `; borders are ${a.nine.l / d}px thick on screen` : ""}.`),
