@@ -411,6 +411,12 @@ pre.code { margin: 0; overflow: auto; background: #0f172a; color: #e2e8f0; borde
 .opt-chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .opt-chip:focus-visible { outline: 2px solid var(--cyan); }
 
+/* option bar: number pickers and sliders (brush size, gradient steps, texture amount) */
+.opt-num { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); font-size: 0.76rem; font-weight: 700; color: var(--ink); }
+.opt-num select { font: inherit; padding: 1px 4px; border-radius: 5px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.opt-num input[type=range] { width: 90px; accent-color: var(--accent); }
+.opt-num b { min-width: 2.6em; text-align: right; }
+
 /* Cleverlike UI Builder — layout on top of the shared UI Studio styles. */
 :root { --pink: #ed287f; }
 body { min-height: 100vh; display: flex; flex-direction: column; }
@@ -748,6 +754,63 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
 .trow.t-hidden .tname, .trow.t-hidden .tkind, .trow.t-hidden .ticon, .trow.t-inherit-hidden .tname, .trow.t-inherit-hidden .tkind, .trow.t-inherit-hidden .ticon { opacity: .45; }
 #btn-showall { margin-left: 8px; }
 
+/* type page: everything fits the window; each card's details scroll, its Build button stays in view */
+#step-type { overflow: hidden; display: flex; }
+#step-type .type-wrap { display: flex; flex-direction: column; min-height: 0; height: 100%; width: 100%; box-sizing: border-box; }
+#step-type .type-intro { flex: none; }
+#step-type .type-grid { flex: 1; min-height: 0; align-items: stretch; grid-auto-rows: minmax(0, 1fr); }
+.tcard { display: flex; flex-direction: column; min-height: 0; }
+.tcard .thumb { flex: none; max-height: 30vh; }
+.tcard .tpl-pick, .tcard .thead { flex: none; }
+.tcard .thead { padding: 4px 16px 0; display: grid; gap: 6px; }
+.tcard .tbody { flex: 1; min-height: 0; overflow: auto; border-top: 1px solid var(--line); margin-top: 8px; padding-top: 10px; }
+.tcard .tfoot { flex: none; padding: 10px 16px 14px; border-top: 1px solid var(--line); background: var(--panel); }
+.tcard .tfoot .btn { width: 100%; }
+@media (max-width: 1100px), (max-height: 620px) { #step-type { overflow: auto; display: block; } #step-type .type-wrap { height: auto; } #step-type .type-grid { grid-auto-rows: auto; } .tcard .tbody { overflow: visible; } }
+
+/* appbar View menu (panels, focus, full screen, reset layout) */
+.ab-menu { position: relative; }
+.ab-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 50; min-width: 230px; padding: 6px; border-radius: 10px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); box-shadow: 0 12px 30px rgba(0, 0, 0, .3); display: grid; gap: 2px; }
+.menu[hidden] { display: none; }
+.menu-item { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 7px; font-size: .84rem; font-weight: 600; }
+.menu-item:hover:not(:disabled), .menu-item:focus-visible { background: var(--hover); outline: none; }
+.menu-item:disabled { opacity: .45; cursor: not-allowed; }
+.menu-item kbd { font: .72rem var(--f-mono); color: var(--muted); }
+.menu-item[aria-pressed="true"] .mi-check::before { content: "✓"; color: var(--accent); font-weight: 800; }
+.menu-sep { height: 1px; background: var(--line); margin: 4px 2px; }
+
+/* draggable panel sizes: column widths (between the side columns and the middle) and the split between two stacked panes */
+.ws { position: relative; }
+.ws-layout { grid-template-columns: var(--lw, 270px) minmax(0, 1fr) var(--rw, 320px); }
+.ws-export { grid-template-columns: var(--lw, 290px) minmax(0, 1fr); }
+.ws-layout.l-col { grid-template-columns: 34px minmax(0, 1fr) var(--rw, 320px); }
+.ws-layout.r-col { grid-template-columns: var(--lw, 270px) minmax(0, 1fr) 34px; }
+@media (min-width: 1351px) {
+  .ws-design { grid-template-columns: var(--lw, 250px) minmax(0, 1fr) var(--rw, 300px); }
+  .ws-design.l-col { grid-template-columns: 34px minmax(0, 1fr) var(--rw, 300px); }
+  .ws-design.r-col { grid-template-columns: var(--lw, 250px) minmax(0, 1fr) 34px; }
+  .ws-design.l-col.r-col { grid-template-columns: 34px minmax(0, 1fr) 34px; }
+}
+.ws-layout.l-col.r-col { grid-template-columns: 34px minmax(0, 1fr) 34px; }
+.vsplit { position: absolute; width: 8px; cursor: col-resize; touch-action: none; z-index: 5; }
+.vsplit::after { content: ""; position: absolute; top: 50%; left: 2px; width: 4px; height: 46px; margin-top: -23px; border-radius: 4px; background: var(--line-strong); opacity: .6; }
+.vsplit:hover::after, .vsplit.dragging::after, .vsplit:focus-visible::after { background: var(--accent); opacity: 1; }
+.vsplit[hidden] { display: none; }
+.hsplit { flex: none; height: 8px; margin: -4px 0; cursor: row-resize; position: relative; touch-action: none; z-index: 2; }
+.hsplit::after { content: ""; position: absolute; left: 50%; top: 2px; width: 46px; height: 4px; margin-left: -23px; border-radius: 4px; background: var(--line-strong); opacity: .6; }
+.hsplit:hover::after, .hsplit.dragging::after, .hsplit:focus-visible::after { background: var(--accent); opacity: 1; }
+.hsplit:focus-visible, .vsplit:focus-visible { outline: none; }
+.col:has(> .pane.folded) > .hsplit { display: none; }
+.pane.sized { min-height: 60px; }
+.pane.sized + .hsplit + .pane { flex: 1 1 0 !important; min-height: 60px; max-height: none !important; }
+.col:has(> .pane.folded) > .pane.sized:not(.folded) { flex: 1 1 auto !important; height: auto !important; }
+.ws-design > .col.split-sized { overflow: hidden; }
+.ws-design > .col.split-sized .props, .ws-design > .col.split-sized .colours { overflow: auto; }
+body.col-dragging, body.col-dragging * { cursor: col-resize !important; user-select: none !important; }
+body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-select: none !important; }
+@media (max-width: 1100px) { .vsplit, .hsplit { display: none !important; } }
+
 </style>
 </head>
 <body>
@@ -771,10 +834,17 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
     <button class="ab-btn primary" type="button" id="btn-next" title="Next step">Next →</button>
     <div class="proj-chip" id="proj-chip"></div>
     <span class="ab-sep" aria-hidden="true"></span>
-    <button class="ab-btn icon" type="button" id="btn-left" title="Show / hide the left panels ( [ )" aria-label="Toggle left panels"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button>
-    <button class="ab-btn icon" type="button" id="btn-right" title="Show / hide the right panels ( ] )" aria-label="Toggle right panels"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
-    <button class="ab-btn" type="button" id="btn-focus" title="Focus: hide both side panels so the preview / editor gets the space (F)">Focus</button>
-    <button class="ab-btn icon" type="button" id="btn-fullscreen" title="Browser full screen (F11)" aria-label="Full screen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button>
+    <div class="ab-menu" id="view-menu-wrap">
+      <button class="ab-btn" type="button" id="btn-view" aria-haspopup="menu" aria-expanded="false" aria-controls="view-menu" title="Panels, focus, full screen and resetting the layout"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg>View <span aria-hidden="true">▾</span></button>
+      <div class="menu" id="view-menu" role="menu" hidden>
+        <button class="menu-item" role="menuitemcheckbox" type="button" id="btn-left" title="Show / hide the left panels"><span class="mi-check" aria-hidden="true"></span>Left panels<kbd>[</kbd></button>
+        <button class="menu-item" role="menuitemcheckbox" type="button" id="btn-right" title="Show / hide the right panels"><span class="mi-check" aria-hidden="true"></span>Right panels<kbd>]</kbd></button>
+        <button class="menu-item" role="menuitemcheckbox" type="button" id="btn-focus" title="Hide both side panels so the preview / editor gets the space"><span class="mi-check" aria-hidden="true"></span>Focus mode<kbd>F</kbd></button>
+        <button class="menu-item" role="menuitemcheckbox" type="button" id="btn-fullscreen" title="Browser full screen"><span class="mi-check" aria-hidden="true"></span>Full screen<kbd>F11</kbd></button>
+        <div class="menu-sep" role="separator"></div>
+        <button class="menu-item" role="menuitem" type="button" id="btn-reset-layout" title="Panel sizes, hidden and folded panels, and the editor / preview split back to the defaults"><span class="mi-check" aria-hidden="true"></span>Reset layout</button>
+      </div>
+    </div>
     <span class="ab-sep" aria-hidden="true"></span>
     <button class="ab-btn" type="button" id="btn-undo" title="Undo (Ctrl+Z)">↶</button>
     <button class="ab-btn" type="button" id="btn-redo" title="Redo (Ctrl+Y)">↷</button>
@@ -1386,7 +1456,8 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
 </script>
 <script>
 /* Cleverlike UI Studio — pixel editor canvas.
- * Tools: pencil, eraser, line, rectangle, fill, eyedropper, select (lift / move / copy / paste), move layer.
+ * Tools: pencil / eraser (brush size), line, rectangle, fill, gradient (banded + dithered), eyedropper (returns to your brush),
+ * select (lift / move / copy / paste), move layer. Optional texture (noise or dither) on everything you paint.
  * Extras: mirror X/Y, grid, onion skin (base state under the one you're drawing), draggable nine-slice guides,
  * wheel zoom around the cursor, space / middle-drag to pan. Left button = primary colour, right = secondary. */
 (function (G) {
@@ -1395,13 +1466,18 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
   const TOOLS = {
     pencil: { label: "Pencil", key: "p" }, eraser: { label: "Eraser", key: "e" }, line: { label: "Line", key: "l" },
     rect: { label: "Rectangle", key: "r" }, fill: { label: "Fill", key: "g" }, picker: { label: "Eyedropper", key: "i" },
-    select: { label: "Select", key: "m" }, move: { label: "Move layer", key: "v" },
+    select: { label: "Select", key: "m" }, move: { label: "Move layer", key: "v" }, gradient: { label: "Gradient", key: "d" },
   };
+  const BAYER4 = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]].map((r) => r.map((v) => (v + 0.5) / 16));
+  const hash2 = (x, y) => { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+  // blend two colours; towards a transparent end only the alpha fades (no grey from the transparent pixel's black)
+  const mix = (a, b, t) => { if (!a[3]) a = [b[0], b[1], b[2], 0]; if (!b[3]) b = [a[0], a[1], a[2], 0]; return [0, 1, 2, 3].map((i) => Math.round(a[i] + (b[i] - a[i]) * t)); };
 
   function createEditor(canvas, hooks) {
     const ctx = canvas.getContext("2d");
     const st = { asset: null, stateIdx: 0, layerIdx: 0, tool: "pencil", zoom: 16, ox: 0, oy: 0, grid: true, onion: false,
       mirrorX: false, mirrorY: false, autoFit: true, bg: "checker", rectFilled: false, fillContiguous: true, hover: null,
+      brushSize: 1, texture: "off" /* off | noise | dither */, texAmt: 25, gradSteps: 4, gradDither: true, gradMode: "overlay" /* overlay | replace */, gradOpacity: 60, prevTool: "pencil",
       sel: null /* {x,y,w,h} */, floating: null /* {img,x,y} */, clipboard: null, drag: null, space: false, guide: null };
 
     let liftedFrom = null; // layer pixels before a selection was lifted (Esc puts them back)
@@ -1443,7 +1519,11 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
       st.ox = Math.round(st.ox); st.oy = Math.round(st.oy); render(); hooks.onView?.();
     }
     const toPx = (e) => { const r = canvas.getBoundingClientRect(); return { cx: e.clientX - r.left, cy: e.clientY - r.top }; };
-    const toImg = ({ cx, cy }) => ({ x: Math.floor((cx - st.ox) / st.zoom), y: Math.floor((cy - st.oy) / st.zoom) });
+    const toImg = ({ cx, cy }) => { const fx = (cx - st.ox) / st.zoom, fy = (cy - st.oy) / st.zoom; return { x: Math.floor(fx), y: Math.floor(fy), fx, fy }; };
+    /** Top-left pixel of the brush for pointer q: the brush is centred on the pointer, so an even size (2x2) sits on the
+     *  pixel corner nearest the cursor instead of hanging down-right of it. */
+    const brushN = () => (["pencil", "eraser"].includes(st.tool) ? Math.max(1, st.brushSize | 0) : 1);
+    const anchor = (q, n = brushN()) => (n === 1 || q.fx == null ? { x: q.x, y: q.y } : { x: Math.round(q.fx - n / 2), y: Math.round(q.fy - n / 2) });
 
     // ---------------- render
     let checker = null;
@@ -1492,8 +1572,9 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
       const sel = st.floating ? { x: st.floating.x, y: st.floating.y, w: st.floating.img.w, h: st.floating.img.h } : st.sel;
       if (sel) { ctx.setLineDash([4, 3]); ctx.lineWidth = 1.5; ctx.strokeStyle = "#ed287f"; ctx.strokeRect(sel.x * z + 0.5, sel.y * z + 0.5, sel.w * z - 1, sel.h * z - 1); ctx.setLineDash([]); }
       // hover pixel
-      if (st.hover && st.hover.x >= 0 && st.hover.y >= 0 && st.hover.x < a.w && st.hover.y < a.h && ["pencil", "eraser", "line", "rect", "fill", "picker"].includes(st.tool)) {
-        ctx.strokeStyle = "rgba(0,174,240,0.9)"; ctx.lineWidth = 1; ctx.strokeRect(st.hover.x * z + 0.5, st.hover.y * z + 0.5, z - 1, z - 1);
+      if (st.hover && st.hover.x >= 0 && st.hover.y >= 0 && st.hover.x < a.w && st.hover.y < a.h && ["pencil", "eraser", "line", "rect", "fill", "picker", "gradient"].includes(st.tool)) {
+        const n = brushN(), A = anchor(st.hover, n); // brush footprint, centred on the pointer
+        ctx.strokeStyle = "rgba(0,174,240,0.9)"; ctx.lineWidth = 1; ctx.strokeRect(A.x * z + 0.5, A.y * z + 0.5, n * z - 1, n * z - 1);
       }
       ctx.restore();
     }
@@ -1508,6 +1589,57 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
     }
     const plotMirror = (im, x, y, c) => { for (const [px, py] of mirrored(x, y)) R.set(im, px, py, c); };
     const colorFor = (button, erase) => (erase ? [0, 0, 0, 0] : R.hexToRgba(hooks.getColor(button === 2 ? "secondary" : "primary")));
+    const otherFor = (button) => R.hexToRgba(hooks.getColor(button === 2 ? "primary" : "secondary"));
+    /** Texture: vary each painted pixel a little (noise: lighter / darker by up to texAmt %; dither: an ordered pattern of the
+     *  other colour at texAmt % density), so flat fills read as a surface. Erasing is never textured. */
+    function texColor(x, y, c, other) {
+      if (!c[3] || st.texture === "off") return c;
+      const k = (Number(st.texAmt) || 0) / 100;
+      // dither against the other colour, or (if that's transparent) a darker shade of this one
+      if (st.texture === "dither") return BAYER4[((y % 4) + 4) % 4][((x % 4) + 4) % 4] < k ? (other && other[3] ? other : [Math.round(c[0] * 0.72), Math.round(c[1] * 0.72), Math.round(c[2] * 0.72), c[3]]) : c;
+      const f = 1 + (hash2(x, y) - 0.5) * 2 * k;
+      return [Math.max(0, Math.min(255, Math.round(c[0] * f))), Math.max(0, Math.min(255, Math.round(c[1] * f))), Math.max(0, Math.min(255, Math.round(c[2] * f))), c[3]];
+    }
+    const plotTex = (other) => (im, x, y, c) => { for (const [px, py] of mirrored(x, y)) R.set(im, px, py, texColor(px, py, c, other)); };
+    /** Pencil / eraser stamp: a brushSize × brushSize square centred on the pixel (mirrored and textured like single pixels). */
+    const plotBrush = (other) => (im, x, y, c) => { const n = Math.max(1, st.brushSize | 0), p = plotTex(other); // (x, y) = brush top-left
+      for (let dy = 0; dy < n; dy++) for (let dx = 0; dx < n; dx++) p(im, x + dx, y + dy, c); };
+    /** Pixels a fill / gradient covers: the selection if there is one, else the area of the clicked colour (touching or everywhere). */
+    function regionAt(im, x, y) {
+      const m = new Uint8Array(im.w * im.h);
+      if (st.sel) { for (let yy = st.sel.y; yy < st.sel.y + st.sel.h; yy++) for (let xx = st.sel.x; xx < st.sel.x + st.sel.w; xx++) if (xx >= 0 && yy >= 0 && xx < im.w && yy < im.h) m[yy * im.w + xx] = 1; return m; }
+      if (x < 0 || y < 0 || x >= im.w || y >= im.h) return m;
+      const t = R.get(im, x, y), same = (q) => q[0] === t[0] && q[1] === t[1] && q[2] === t[2] && q[3] === t[3];
+      if (!st.fillContiguous) { for (let yy = 0; yy < im.h; yy++) for (let xx = 0; xx < im.w; xx++) if (same(R.get(im, xx, yy))) m[yy * im.w + xx] = 1; return m; }
+      const stack = [[x, y]];
+      while (stack.length) { const [px, py] = stack.pop(); if (px < 0 || py < 0 || px >= im.w || py >= im.h || m[py * im.w + px] || !same(R.get(im, px, py))) continue; m[py * im.w + px] = 1; stack.push([px + 1, py], [px - 1, py], [px, py + 1], [px, py - 1]); }
+      return m;
+    }
+    function fillRegion(im, m, colorAt) { for (let y = 0; y < im.h; y++) for (let x = 0; x < im.w; x++) if (m[y * im.w + x]) R.set(im, x, y, colorAt(x, y)); }
+    /** Gradient from c0 (drag start) to c1 (drag end) in gradSteps bands, ordered-dithered between bands if gradDither. */
+    /** Overlay: the selection, else every pixel that already has colour (transparent areas stay transparent); an empty layer = all of it. */
+    function overlayRegion(im) {
+      const m = new Uint8Array(im.w * im.h);
+      if (st.sel) { for (let yy = st.sel.y; yy < st.sel.y + st.sel.h; yy++) for (let xx = st.sel.x; xx < st.sel.x + st.sel.w; xx++) if (xx >= 0 && yy >= 0 && xx < im.w && yy < im.h) m[yy * im.w + xx] = 1; return m; }
+      let any = 0; for (let i = 0; i < m.length; i++) if (im.d[i * 4 + 3]) { m[i] = 1; any = 1; }
+      if (!any) m.fill(1);
+      return m;
+    }
+    function gradientInto(im, m, a, b, c0, c1) {
+      const vx = b.x - a.x, vy = b.y - a.y, L2 = vx * vx + vy * vy || 1, n = Math.max(2, st.gradSteps | 0);
+      const over = st.gradMode !== "replace", op = Math.max(0, Math.min(100, Number(st.gradOpacity) || 0)) / 100, base = over ? R.clone(im) : null;
+      fillRegion(im, m, (x, y) => {
+        const t = Math.max(0, Math.min(1, ((x - a.x) * vx + (y - a.y) * vy) / L2)), q = t * (n - 1), lo = Math.floor(q), fr = q - lo;
+        const band = Math.min(n - 1, st.gradDither ? lo + (fr > BAYER4[((y % 4) + 4) % 4][((x % 4) + 4) % 4] ? 1 : 0) : Math.round(q));
+        const c = mix(c0, c1, band / (n - 1));
+        if (!over) return c;
+        // overlay: blend the gradient colour over what's there (its own alpha × the overlay opacity); keeps the pixel's coverage
+        const i = (y * im.w + x) * 4, px = [base.d[i], base.d[i + 1], base.d[i + 2], base.d[i + 3]], keep = px[3];
+        R.blendPx(px, 0, c[0], c[1], c[2], Math.round(c[3] * op));
+        if (keep) px[3] = keep; // a solid pixel stays as solid as it was
+        return px.map((v) => Math.round(v));
+      });
+    }
     function guideAt(cx, cy) {
       const a = asset(); if (a?.type !== "nine") return null;
       const z = st.zoom, n = a.nine, x = cx - st.ox, y = cy - st.oy, near = (v, p) => Math.abs(v - p) <= 5;
@@ -1543,14 +1675,22 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
       if (!layer) return;
       if (layer.visible === false && !["picker", "select"].includes(tool)) { hooks.toast?.("That layer is hidden. Show it to draw on it."); return; }
       if (tool === "picker") {
-        const c = R.get(R.composite(stateObj().layers, a.w, a.h), q.x, q.y); hooks.setColor(e.button === 2 ? "secondary" : "primary", R.rgbaToHex(c)); return;
+        const c = R.get(R.composite(stateObj().layers, a.w, a.h), q.x, q.y); hooks.setColor(e.button === 2 ? "secondary" : "primary", R.rgbaToHex(c));
+        if (st.tool === "picker") setTool(st.prevTool && st.prevTool !== "picker" ? st.prevTool : "pencil"); // back to the brush you were using
+        return;
       }
-      if (tool === "fill") { R.fillInPlace(layer.img, q.x, q.y, colorFor(e.button), st.fillContiguous); hooks.onCommit(); render(); return; }
+      if (tool === "fill") {
+        const c = colorFor(e.button), o = otherFor(e.button);
+        if (st.texture === "off" && !st.sel) R.fillInPlace(layer.img, q.x, q.y, c, st.fillContiguous);
+        else fillRegion(layer.img, regionAt(layer.img, q.x, q.y), (x, y) => texColor(x, y, c, o));
+        hooks.onCommit(); render(); return;
+      }
+      if (tool === "gradient") { st.drag = { kind: "gradient", start: q, mask: st.gradMode === "replace" ? regionAt(layer.img, q.x, q.y) : overlayRegion(layer.img), c0: colorFor(e.button), c1: otherFor(e.button) }; return; }
       if (tool === "pencil" || tool === "eraser") {
-        const c = colorFor(e.button, tool === "eraser"); plotMirror(layer.img, q.x, q.y, c);
-        st.drag = { kind: "paint", last: q, c }; render(); return;
+        const c = colorFor(e.button, tool === "eraser"), pb = plotBrush(otherFor(e.button)), A = anchor(q); pb(layer.img, A.x, A.y, c);
+        st.drag = { kind: "paint", last: A, c, pb }; render(); return;
       }
-      if (tool === "line" || tool === "rect") { st.drag = { kind: tool, start: q, c: colorFor(e.button) }; return; }
+      if (tool === "line" || tool === "rect") { st.drag = { kind: tool, start: q, c: colorFor(e.button), pt: plotTex(otherFor(e.button)) }; return; }
       if (tool === "move") { st.drag = { kind: "move", start: q, base: R.clone(layer.img) }; return; }
       if (tool === "select") {
         const inSel = (s) => s && q.x >= s.x && q.y >= s.y && q.x < s.x + s.w && q.y < s.y + s.h;
@@ -1576,11 +1716,12 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
         hooks.onNine?.(); render(); return;
       }
       const layer = layerObj();
-      if (d.kind === "paint") { R.lineInPlace(layer.img, d.last.x, d.last.y, q.x, q.y, d.c, plotMirror); d.last = q; render(); return; }
+      if (d.kind === "paint") { const A = anchor(q); R.lineInPlace(layer.img, d.last.x, d.last.y, A.x, A.y, d.c, d.pb); d.last = A; render(); return; }
+      if (d.kind === "gradient") { const prev = R.clone(layer.img); gradientInto(prev, d.mask, d.start, q, d.c0, d.c1); d.end = q; render(prev); return; }
       if (d.kind === "line" || d.kind === "rect") {
         const prev = R.clone(layer.img);
-        if (d.kind === "line") R.lineInPlace(prev, d.start.x, d.start.y, q.x, q.y, d.c, plotMirror);
-        else R.rectInPlace(prev, d.start.x, d.start.y, q.x, q.y, d.c, st.rectFilled || e.shiftKey, plotMirror);
+        if (d.kind === "line") R.lineInPlace(prev, d.start.x, d.start.y, q.x, q.y, d.c, d.pt);
+        else R.rectInPlace(prev, d.start.x, d.start.y, q.x, q.y, d.c, st.rectFilled || e.shiftKey, d.pt);
         d.end = q; render(prev); return;
       }
       if (d.kind === "move") { layer.img = R.shift(d.base, q.x - d.start.x, q.y - d.start.y); render(); return; }
@@ -1597,8 +1738,9 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
       const layer = layerObj(), q = toImg(toPx(e));
       if (d.kind === "paint" || d.kind === "move") hooks.onCommit();
       if (d.kind === "guide") hooks.onCommit();
-      if (d.kind === "line") { R.lineInPlace(layer.img, d.start.x, d.start.y, q.x, q.y, d.c, plotMirror); hooks.onCommit(); }
-      if (d.kind === "rect") { R.rectInPlace(layer.img, d.start.x, d.start.y, q.x, q.y, d.c, st.rectFilled || e.shiftKey, plotMirror); hooks.onCommit(); }
+      if (d.kind === "line") { R.lineInPlace(layer.img, d.start.x, d.start.y, q.x, q.y, d.c, d.pt); hooks.onCommit(); }
+      if (d.kind === "rect") { R.rectInPlace(layer.img, d.start.x, d.start.y, q.x, q.y, d.c, st.rectFilled || e.shiftKey, d.pt); hooks.onCommit(); }
+      if (d.kind === "gradient") { gradientInto(layer.img, d.mask, d.start, q, d.c0, d.c1); hooks.onCommit(); }
       if (d.kind === "select" && st.sel && st.sel.w * st.sel.h <= 1 && d.start.x === q.x && d.start.y === q.y) st.sel = null;
       render(); hooks.onSelection?.();
     });
@@ -1654,7 +1796,7 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
       layerObj().img = R.flip(layerObj().img, horizontal); hooks.onCommit(); render();
     }
 
-    function setTool(t) { if (t !== "select") commitFloating(); st.tool = t; hooks.onTool?.(t); render(); }
+    function setTool(t) { if (t !== "select") commitFloating(); if (t === "picker" && st.tool !== "picker") st.prevTool = st.tool; st.tool = t; hooks.onTool?.(t); render(); }
     function setTarget(a, stateIdx = 0, layerIdx = 0, refit = false) {
       commitFloating();
       const changed = a !== st.asset; st.asset = a; st.stateIdx = Math.min(stateIdx, (a?.states.length || 1) - 1);
@@ -1667,37 +1809,68 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
     return { st, TOOLS, render, fit, center, zoomBy, zoomAt, setTool, setTarget, copy, pasteImg, clearSelection, selectAll, flipSel, commitFloating,
       get clipboard() { return st.clipboard; } };
   }
-  G.CLEditor = { createEditor };
+  /** Option-bar controls shared by both apps for the new painting options (brush size, texture, gradient).
+   *  h = element helper, chip(pressed, icon, label, title, fn), refresh() redraws the host's toolbar + canvas. */
+  function paintOptions(st, h, chip, refresh) {
+    const out = [], set = (k, v) => () => { st[k] = v; refresh(); };
+    const num = (label, title, key, values) => h("label", { class: "opt-num", title }, h("span", {}, label),
+      h("select", { onchange: (e) => { st[key] = Number(e.target.value); refresh(); } }, ...values.map((v) => { const o = h("option", { value: v }, String(v)); if (Number(st[key]) === v) o.selected = true; return o; })));
+    if (["pencil", "eraser"].includes(st.tool)) out.push(num("Size", "Brush size in pixels (a square)", "brushSize", [1, 2, 3, 4, 5, 6, 8, 10, 12, 16]));
+    if (["pencil", "line", "rect", "fill"].includes(st.tool)) {
+      out.push(h("span", { class: "opt-seg", title: "Texture: vary the colour pixel by pixel so flat areas look like a surface" },
+        chip(st.texture === "off", "brush", "Flat", "Every pixel exactly the colour", set("texture", "off")),
+        chip(st.texture === "noise", "dither", "Noise", "Each pixel a little lighter or darker", set("texture", "noise")),
+        chip(st.texture === "dither", "grid", "Dither", "An even pattern of the other colour (right colour, or left when painting with right click)", set("texture", "dither"))));
+      if (st.texture !== "off") out.push(h("label", { class: "opt-num", title: st.texture === "noise" ? "How much lighter / darker (%)" : "How much of the other colour (%)" }, h("span", {}, "Amount"),
+        h("input", { type: "range", min: 5, max: st.texture === "noise" ? 40 : 75, step: 5, value: st.texAmt, oninput: (e) => { st.texAmt = Number(e.target.value); }, onchange: refresh }), h("b", {}, `${st.texAmt}%`)));
+    }
+    if (st.tool === "gradient") {
+      out.push(h("span", { class: "opt-seg" }, chip(st.gradMode !== "replace", "blend", "Overlay", "Lay the gradient over the existing pixels (shading); transparent areas stay transparent", set("gradMode", "overlay")),
+        chip(st.gradMode === "replace", "fill", "Replace", "Paint the gradient instead of the existing pixels", set("gradMode", "replace"))));
+      if (st.gradMode !== "replace") out.push(h("label", { class: "opt-num", title: "How strongly the gradient covers what's underneath" }, h("span", {}, "Opacity"),
+        h("input", { type: "range", min: 10, max: 100, step: 5, value: st.gradOpacity, oninput: (e) => { st.gradOpacity = Number(e.target.value); }, onchange: refresh }), h("b", {}, `${st.gradOpacity}%`)));
+      out.push(num("Steps", "Number of colour bands from the left colour to the right colour", "gradSteps", [2, 3, 4, 5, 6, 8, 12, 16]));
+      out.push(chip(st.gradDither, "dither", "Dither", "Blend neighbouring bands with an even pixel pattern", () => { st.gradDither = !st.gradDither; refresh(); }));
+      if (st.gradMode === "replace") out.push(h("span", { class: "opt-seg" }, chip(st.fillContiguous, "touching", "Touching", "Fill the connected area you start on (or the selection)", set("fillContiguous", true)), chip(!st.fillContiguous, "allColor", "All matching", "Every pixel of that colour (or the selection)", set("fillContiguous", false))));
+    }
+    return out;
+  }
+  G.CLEditor = { createEditor, paintOptions };
 })(typeof window !== "undefined" ? window : globalThis);
 
 </script>
 <script>
-/* Cleverlike UI Studio — toolbar icons (24×24 line icons, currentColor). */
+/* Cleverlike UI Studio — toolbar icons (24×24 line icons, currentColor).
+ * From Lucide (lucide.dev, ISC licence; "blend" = layers) and one from Tabler Icons (tabler.io, MIT licence: dither = "grain"). */
 (function (G) {
   "use strict";
-  const svg = (body, extra = "") => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${body}</svg>`;
+  const svg = (body, extra = "") => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${body}</svg>`;
   G.CLUIIcons = {
-    pencil: svg('<path d="M15.5 4.5l4 4L9 19H5v-4L15.5 4.5z"/><path d="M13.5 6.5l4 4"/>'),
-    eraser: svg('<path d="M8 19h11"/><path d="M5.3 14.3l8.6-8.6a2 2 0 0 1 2.8 0l2.6 2.6a2 2 0 0 1 0 2.8L13 17.4 11.6 19H8.4l-3.1-3.1a1.1 1.1 0 0 1 0-1.6z"/><path d="M9.5 10l5.5 5.5"/>'),
-    line: svg('<path d="M5.5 18.5l13-13"/><circle cx="5" cy="19" r="1.6" fill="currentColor"/><circle cx="19" cy="5" r="1.6" fill="currentColor"/>'),
-    rect: svg('<rect x="4" y="6" width="16" height="12" rx="1"/>'),
-    fill: svg('<path d="M4.5 11.5l7-7 7 7-6.3 6.3a1 1 0 0 1-1.4 0l-6.3-6.3z"/><path d="M4.5 11.5h14"/><path d="M20 15.5s-1.5 1.9-1.5 3a1.5 1.5 0 0 0 3 0c0-1.1-1.5-3-1.5-3z" fill="currentColor" stroke="none"/>'),
-    picker: svg('<path d="M14.5 4.5a2.1 2.1 0 0 1 3 0l2 2a2.1 2.1 0 0 1 0 3l-1.5 1.5-4.5-4.5 1-2z"/><path d="M13 7.5l3.5 3.5"/><path d="M14.2 9.8L6.5 17.5 5 21l3.5-1.5 7.7-7.7"/>'),
-    select: svg('<rect x="4" y="5" width="16" height="14" rx="1" stroke-dasharray="3 2.4"/>'),
-    move: svg('<path d="M12 3v18M3 12h18"/><path d="M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/>'),
-    mirrorX: svg('<path d="M12 3v18" stroke-dasharray="2 2.2"/><path d="M9 7l-5 5 5 5z"/><path d="M15 7l5 5-5 5z" fill="currentColor"/>'),
-    mirrorY: svg('<path d="M3 12h18" stroke-dasharray="2 2.2"/><path d="M7 9l5-5 5 5z"/><path d="M7 15l5 5 5-5z" fill="currentColor"/>'),
-    outline: svg('<rect x="5" y="6" width="14" height="12" rx="1"/>'),
-    filled: svg('<rect x="5" y="6" width="14" height="12" rx="1" fill="currentColor"/>'),
-    touching: svg('<rect x="3.5" y="7" width="7" height="7" fill="currentColor"/><rect x="10.5" y="7" width="7" height="7" fill="currentColor"/><rect x="17.5" y="11" width="3" height="3"/>'),
-    allColor: svg('<rect x="3.5" y="4" width="6" height="6" fill="currentColor"/><rect x="14.5" y="4" width="6" height="6" fill="currentColor"/><rect x="9" y="14" width="6" height="6" fill="currentColor"/>'),
-    grid: svg('<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M9.3 4v16M14.7 4v16M4 9.3h16M4 14.7h16"/>'),
-    flipH: svg('<path d="M12 3v18" stroke-dasharray="2 2.2"/><path d="M9 6L3.5 18H9z" fill="currentColor"/><path d="M15 6l5.5 12H15z"/>'),
-    flipV: svg('<path d="M3 12h18" stroke-dasharray="2 2.2"/><path d="M6 9L18 3.5V9z" fill="currentColor"/><path d="M6 15l12 5.5V15z"/>'),
-    copy: svg('<rect x="8" y="8" width="12" height="12" rx="1.5"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/>'),
-    paste: svg('<rect x="5" y="5" width="14" height="16" rx="1.5"/><path d="M9 5V3.5h6V5"/><path d="M9 11h6M9 15h4"/>'),
-    selectAll: svg('<rect x="4" y="4" width="16" height="16" rx="1" stroke-dasharray="3 2.4"/><rect x="8" y="8" width="8" height="8" fill="currentColor" stroke="none" opacity=".35"/>'),
-    deselect: svg('<rect x="4" y="4" width="16" height="16" rx="1" stroke-dasharray="3 2.4"/><path d="M9 9l6 6M15 9l-6 6"/>'),
+    pencil: svg("<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /> <path d=\"m15 5 4 4\" />"),
+    eraser: svg("<path d=\"m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21\" /> <path d=\"M22 21H7\" /> <path d=\"m5 11 9 9\" />"),
+    line: svg("<path d=\"M22 2 2 22\" />"),
+    rect: svg("<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" />"),
+    fill: svg("<path d=\"m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z\" /> <path d=\"m5 2 5 5\" /> <path d=\"M2 13h15\" /> <path d=\"M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z\" />"),
+    picker: svg("<path d=\"m2 22 1-1h3l9-9\" /> <path d=\"M3 21v-3l9-9\" /> <path d=\"m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z\" />"),
+    select: svg("<path d=\"M5 3a2 2 0 0 0-2 2\" /> <path d=\"M19 3a2 2 0 0 1 2 2\" /> <path d=\"M21 19a2 2 0 0 1-2 2\" /> <path d=\"M5 21a2 2 0 0 1-2-2\" /> <path d=\"M9 3h1\" /> <path d=\"M9 21h1\" /> <path d=\"M14 3h1\" /> <path d=\"M14 21h1\" /> <path d=\"M3 9v1\" /> <path d=\"M21 9v1\" /> <path d=\"M3 14v1\" /> <path d=\"M21 14v1\" />"),
+    move: svg("<path d=\"M12 2v20\" /> <path d=\"m15 19-3 3-3-3\" /> <path d=\"m19 9 3 3-3 3\" /> <path d=\"M2 12h20\" /> <path d=\"m5 9-3 3 3 3\" /> <path d=\"m9 5 3-3 3 3\" />"),
+    mirrorX: svg("<path d=\"M8 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h3\" /> <path d=\"M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3\" /> <path d=\"M12 20v2\" /> <path d=\"M12 14v2\" /> <path d=\"M12 8v2\" /> <path d=\"M12 2v2\" />"),
+    mirrorY: svg("<path d=\"M21 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v3\" /> <path d=\"M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3\" /> <path d=\"M4 12H2\" /> <path d=\"M10 12H8\" /> <path d=\"M16 12h-2\" /> <path d=\"M22 12h-2\" />"),
+    outline: svg("<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" />"),
+    touching: svg("<path d=\"M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z\" />"),
+    allColor: svg("<path d=\"M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z\" /> <path d=\"M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97\" />"),
+    grid: svg("<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" /> <path d=\"M3 9h18\" /> <path d=\"M3 15h18\" /> <path d=\"M9 3v18\" /> <path d=\"M15 3v18\" />"),
+    flipH: svg("<path d=\"m3 7 5 5-5 5V7\" /> <path d=\"m21 7-5 5 5 5V7\" /> <path d=\"M12 20v2\" /> <path d=\"M12 14v2\" /> <path d=\"M12 8v2\" /> <path d=\"M12 2v2\" />"),
+    flipV: svg("<path d=\"m17 3-5 5-5-5h10\" /> <path d=\"m17 21-5-5-5 5h10\" /> <path d=\"M4 12H2\" /> <path d=\"M10 12H8\" /> <path d=\"M16 12h-2\" /> <path d=\"M22 12h-2\" />"),
+    copy: svg("<rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\" ry=\"2\" /> <path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\" />"),
+    paste: svg("<path d=\"M15 2H9a1 1 0 0 0-1 1v2c0 .6.4 1 1 1h6c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1Z\" /> <path d=\"M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2M16 4h2a2 2 0 0 1 2 2v2M11 14h10\" /> <path d=\"m17 10 4 4-4 4\" />"),
+    selectAll: svg("<path d=\"M12.034 12.681a.498.498 0 0 1 .647-.647l9 3.5a.5.5 0 0 1-.033.943l-3.444 1.068a1 1 0 0 0-.66.66l-1.067 3.443a.5.5 0 0 1-.943.033z\" /> <path d=\"M5 3a2 2 0 0 0-2 2\" /> <path d=\"M19 3a2 2 0 0 1 2 2\" /> <path d=\"M5 21a2 2 0 0 1-2-2\" /> <path d=\"M9 3h1\" /> <path d=\"M9 21h2\" /> <path d=\"M14 3h1\" /> <path d=\"M3 9v1\" /> <path d=\"M21 9v2\" /> <path d=\"M3 14v1\" />"),
+    deselect: svg("<path d=\"M18 6 6 18\" /> <path d=\"m6 6 12 12\" />"),
+    gradient: svg("<circle cx=\"9\" cy=\"9\" r=\"7\" /> <circle cx=\"15\" cy=\"15\" r=\"7\" />"),
+    brush: svg("<path d=\"m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08\" /> <path d=\"M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z\" />"),
+    dither: svg("<path d=\"M4.5 9.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /> <path d=\"M9.5 4.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /> <path d=\"M9.5 14.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /> <path d=\"M4.5 19.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /> <path d=\"M14.5 9.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /> <path d=\"M19.5 4.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /> <path d=\"M14.5 19.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /> <path d=\"M19.5 14.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" />"),
+    blend: svg("<path d=\"m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z\" /> <path d=\"m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65\" /> <path d=\"m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65\" />"),
+    filled: svg("<rect fill=\"currentColor\" width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" />"),
   };
 })(typeof window !== "undefined" ? window : globalThis);
 
@@ -2613,7 +2786,7 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
       drawArt(img, D, A(faceId), st, cell.x, cell.y, cell.w, cell.h, cache, clip);
       const isz = Number(P.iconSize) || 16, ic = cell.item ? cell.item.props.icon : n.props.icon;
       let tx = cell.x + 3, tw = cell.w - 6, ty = cell.y + Math.floor((cell.h - LINE * (P.scale || 1)) / 2) + 1 + lift;
-      if (iconMode === "left") { drawIcon(ic, cell.x + 4, cell.y + Math.floor((cell.h - isz) / 2) + lift, isz); tx = cell.x + isz + 7; tw = cell.w - isz - 10; }
+      if (iconMode === "left") { drawIcon(ic, cell.x + 4, cell.y + Math.floor((cell.h - isz) / 2) + lift, isz); tx = cell.x + isz + 7; tw = (P.align || "center") === "left" ? cell.w - isz - 10 : cell.w - 2 * (isz + 7); } // centred text stays centred on the button
       else if (iconMode === "top") { drawIcon(ic, cell.x + Math.floor((cell.w - isz) / 2), cell.y + 4 + lift, isz); ty = cell.y + cell.h - LINE * (P.scale || 1) - 3 + lift; }
       T(label, tx, ty, tw, P.color, { sc: P.scale || 1, align: P.align || "center", shadow: P.shadow, clip: isect(iconMode === "top" ? [cell.x + 3, ty - 1, cell.w - 6, LINE * (P.scale || 1) + 2] : [tx, cell.y, tw, cell.h], clip) });
     };
@@ -2839,8 +3012,10 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
         if (o.icon === "top") kids.push({ icon: { type: "image", size: [isz, isz], anchor_from: "top_middle", anchor_to: "top_middle", offset: [0, 4 + lift], layer: 1, bindings: o.iconBinds } });
         const textX = o.icon === "left" ? isz + 7 : 3, anchor = o.icon === "top" ? "bottom_middle" : o.align === "left" ? "left_middle" : o.align === "right" ? "right_middle" : "center";
         const lab = label(o.text, o.color, { shadow: !!o.shadow, text_alignment: o.align || "center", size: ["100%", "default"], anchor_from: anchor, anchor_to: anchor, offset: [0, 0], ...(o.scale && o.scale !== 1 ? { font_scale_factor: o.scale } : {}), ...(o.textBinds ? { bindings: o.textBinds } : {}) });
-        kids.push({ label_clip: { type: "panel", size: [`100% - ${textX + 3}px`, o.icon === "top" ? 10 : "100%"], anchor_from: o.icon === "top" ? "bottom_middle" : "left_middle", anchor_to: o.icon === "top" ? "bottom_middle" : "left_middle",
-          offset: [o.icon === "top" ? 0 : textX, o.icon === "top" ? -3 + lift : lift], clips_children: true, layer: 1, controls: [{ label: lab }] } });
+        // an icon on the left keeps the same space free on the right, so centred labels stay centred on the whole button
+        const sym = o.icon === "left" && o.align !== "left";
+        kids.push({ label_clip: { type: "panel", size: [sym ? `100% - ${2 * textX}px` : `100% - ${textX + 3}px`, o.icon === "top" ? 10 : "100%"], anchor_from: o.icon === "top" ? "bottom_middle" : sym ? "center" : "left_middle", anchor_to: o.icon === "top" ? "bottom_middle" : sym ? "center" : "left_middle",
+          offset: [o.icon === "top" || sym ? 0 : textX, o.icon === "top" ? -3 + lift : lift], clips_children: true, layer: 1, controls: [{ label: lab }] } });
         ui[`${base}_${st}`] = { type: "image", texture: tex(faceAsset, st), size: ["100%", "100%"], layer: 1, controls: kids };
       }
       return ["default", "hover", "pressed"].map((st) => ({ [`${st}@${REF(`${base}_${st}`)}`]: {} }));
@@ -3544,13 +3719,13 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
         h("div", { class: "tpl-pick" }, h("span", { class: "muted small-label" }, "Start from"),
           h("span", { class: "seg", role: "group", "aria-label": `${T.label} layout` }, ...tpls.map(([id, label]) => h("button", { type: "button", "aria-pressed": String(id === tpl), onclick: () => { state.cardTpl[type] = id; renderTypes(); } }, label))),
           h("p", { class: "muted tpl-blurb" }, tdef[2])),
-        h("div", { class: "tbody" },
-          h("h3", {}, T.label, h("span", { class: "api" }, T.api)),
-          h("p", {}, T.blurb),
+        h("div", { class: "thead" }, h("h3", {}, T.label, h("span", { class: "api" }, T.api)), h("p", {}, T.blurb)),
+        h("div", { class: "tbody", tabindex: "0", "aria-label": `${T.label}: how it works` },
           h("h4", {}, "How it's implemented"), h("ol", {}, ...T.how.map((x) => h("li", {}, x))),
           h("h4", {}, "Components"), h("ul", { class: "comp" }, ...T.components.map(([c, s]) => h("li", {}, h("span", {}, c), h("span", { class: `pill ${s === "proven" ? "ok" : s === "seen" ? "info" : "warn"}`, title: s === "seen" ? "Not in our spike yet, but used by shipped Minecraft Education worlds" : null }, s === "proven" ? "proven in Edu" : s === "seen" ? "used in Edu worlds" : "needs test")))),
           h("h4", {}, "Files it makes"), h("div", { class: "files" }, ...T.files.map((f) => h("code", {}, f))),
-          h("p", { class: "limits" }, T.limits),
+          h("p", { class: "limits" }, T.limits)),
+        h("div", { class: "tfoot" },
           h("button", { type: "button", class: "btn primary big", onclick: () => { const p = B.newProject(type, tpl); load(p, "layout"); toast(`New ${T.label} (${tdef[1]}): start by arranging the elements.`); } },
             `${cur && cur.type === type ? "Start a new" : /^([AEIOU]|NPC)/.test(T.label) ? "Build an" : "Build a"} ${T.label}`))));
     }
@@ -4344,6 +4519,7 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
     rect: ["Rectangle", "Drag to draw a box. Hold Shift for a filled box."], fill: ["Fill", "Click to fill an area with the left colour (right click: right colour)."],
     picker: ["Pick colour", "Click a pixel to pick its colour. Hold Alt with any tool for this."], select: ["Select", "Drag a box. Drag inside it to move, Ctrl+drag to copy, arrow keys nudge, Enter places, Esc cancels."],
     move: ["Move layer", "Drag to slide the whole layer."],
+    gradient: ["Gradient", "Drag across an area: left colour where you start, right colour where you let go (right-drag swaps). Fills the selection, or the area you start on."],
   };
   function renderToolbar() {
     const tb = $("toolbar"), ed = state.editor, I = G.CLUIIcons, st = ed.st; tb.innerHTML = "";
@@ -4351,7 +4527,7 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
       return h("button", { type: "button", class: "tool", "aria-pressed": String(st.tool === k), title: `${label} (${key})\n${help}`, "aria-label": `${label} (${key})`, onclick: () => ed.setTool(k), html: I[k] }, h("span", { class: "tl" }, label), h("kbd", {}, key)); };
     const action = (icon, label, title, fn, pressed) => h("button", { type: "button", class: "tool", "aria-pressed": pressed == null ? null : String(!!pressed), title, "aria-label": label, onclick: fn, html: I[icon] }, h("span", { class: "tl" }, label));
     const group = (name, ...kids) => h("div", { class: "tool-group" }, h("div", { class: "tg-row" }, ...kids), h("div", { class: "tg-name" }, name));
-    tb.append(group("Draw", ...["pencil", "eraser", "line", "rect", "fill", "picker"].map(tool)), group("Select", tool("select"), tool("move")),
+    tb.append(group("Draw", ...["pencil", "eraser", "line", "rect", "fill", "gradient", "picker"].map(tool)), group("Select", tool("select"), tool("move")),
       group("Edit", action("flipH", "Flip ↔", "Flip the selection (or whole layer) left–right", () => ed.flipSel(true)), action("flipV", "Flip ↕", "Flip the selection (or whole layer) top–bottom", () => ed.flipSel(false)),
         action("copy", "Copy", "Copy the selection or layer (Ctrl+C)", () => ed.copy()), action("paste", "Paste", "Paste (Ctrl+V); images copied from other apps paste in exactly", () => { if (ed.clipboard) ed.pasteImg(R.clone(ed.clipboard)); else toast("Nothing copied yet."); })),
       group("View", action("grid", "Grid", "Show the pixel grid", () => { st.grid = !st.grid; renderToolbar(); ed.render(); }, st.grid)));
@@ -4360,6 +4536,7 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
     const opts = [];
     if (st.tool === "rect") opts.push(h("span", { class: "opt-seg" }, chip(!st.rectFilled, "outline", "Outline", "Only the edge", set("rectFilled", false)), chip(st.rectFilled, "filled", "Filled", "The whole box", set("rectFilled", true))));
     if (st.tool === "fill") opts.push(h("span", { class: "opt-seg" }, chip(st.fillContiguous, "touching", "Touching", "Only connected pixels", set("fillContiguous", true)), chip(!st.fillContiguous, "allColor", "All matching", "That colour everywhere", set("fillContiguous", false))));
+    opts.push(...G.CLEditor.paintOptions(st, h, chip, () => { renderToolbar(); ed.render(); }));
     if (["pencil", "eraser", "line", "rect", "fill"].includes(st.tool)) opts.push(chip(st.mirrorX, "mirrorX", "Mirror ↔", "Also draw mirrored left–right", flip("mirrorX")), chip(st.mirrorY, "mirrorY", "Mirror ↕", "Also draw mirrored top–bottom", flip("mirrorY")));
     if (st.tool === "select") opts.push(chip(null, "selectAll", "Select all", "Ctrl+A", () => ed.selectAll()), chip(null, "deselect", "Deselect", "Esc", () => { ed.commitFloating(); st.sel = null; ed.render(); }));
     const [label, help] = TOOL_INFO[st.tool];
@@ -4772,6 +4949,7 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
       ws.classList.toggle("l-col", !!sp[step].l); ws.classList.toggle("r-col", !!(right && sp[step].r));
       left && left.classList.toggle("side-collapsed", !!sp[step].l); right && right.classList.toggle("side-collapsed", !!sp[step].r);
     }
+    requestAnimationFrame(() => placeVSplits());
     const has = !!cur, s2 = has ? sp[state.step] : {}, hasRight = state.step !== "export";
     $("btn-left").disabled = !has; $("btn-right").disabled = !has || !hasRight; $("btn-focus").disabled = !has;
     $("btn-left").setAttribute("aria-pressed", String(has && !s2.l)); $("btn-right").setAttribute("aria-pressed", String(has && hasRight && !s2.r));
@@ -4829,6 +5007,98 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
     sp.addEventListener("keydown", (e) => { if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return; e.preventDefault(); const cur = center.firstElementChild.getBoundingClientRect().height; const v = Math.max(200, cur + (e.key === "ArrowDown" ? 24 : -24)); setH(v); setPref("edH", v); renderMini(); });
   }
 
+  // ------------------------------------------------------------------ workspace: draggable column widths + pane splits, View menu, reset
+  const COLW = { layout: { l: 270, r: 320 }, design: { l: 250, r: 300 }, export: { l: 290 } };
+  let relayoutQueued = false;
+  function relayout() { // after a size change: refit the previews / editor, which listen for window resize
+    if (relayoutQueued) return; relayoutQueued = true;
+    requestAnimationFrame(() => { relayoutQueued = false; window.dispatchEvent(new Event("resize")); placeVSplits(); });
+  }
+  function applyColW() {
+    const cw = prefs().colw || {};
+    for (const [step, cls] of Object.entries(WS)) {
+      const ws = document.querySelector("." + cls); if (!ws) continue; const d = { ...COLW[step], ...(cw[step] || {}) };
+      ws.style.setProperty("--lw", `${d.l}px`); if (d.r) ws.style.setProperty("--rw", `${d.r}px`);
+    }
+    placeVSplits();
+  }
+  function placeVSplits() {
+    for (const [, cls] of Object.entries(WS)) {
+      const ws = document.querySelector("." + cls); if (!ws || ws.closest(".step").hidden) continue;
+      const wr = ws.getBoundingClientRect(), gap = parseFloat(getComputedStyle(ws).columnGap) || 8;
+      for (const hd of ws.querySelectorAll(":scope > .vsplit")) {
+        const col = hd._col, r = col.getBoundingClientRect(), stacked = r.width > wr.width * 0.8;
+        hd.hidden = col.classList.contains("side-collapsed") || stacked;
+        hd.style.top = `${r.top - wr.top}px`; hd.style.height = `${r.height}px`;
+        hd.style.left = `${(hd._side === "l" ? r.right - wr.left + gap / 2 : r.left - wr.left - gap / 2) - 4}px`;
+      }
+    }
+  }
+  function setupResizers() {
+    // column widths: a handle in the gap beside each side column
+    for (const [step, cls] of Object.entries(WS)) {
+      const ws = document.querySelector("." + cls); if (!ws) continue;
+      const cols = [...ws.querySelectorAll(":scope > .col")];
+      cols.forEach((col, i) => {
+        const side = i === 0 ? "l" : "r";
+        const hd = h("div", { class: "vsplit", role: "separator", "aria-orientation": "vertical", tabindex: "0", title: "Drag to resize this side; double-click to reset", "aria-label": `Resize the ${side === "l" ? "left" : "right"} panels` });
+        hd._col = col; hd._side = side; ws.append(hd);
+        const width = () => col.getBoundingClientRect().width;
+        const setW = (w) => { const max = Math.max(220, ws.getBoundingClientRect().width * 0.42); w = Math.round(Math.max(180, Math.min(max, w))); ws.style.setProperty(side === "l" ? "--lw" : "--rw", `${w}px`); relayout(); return w; };
+        const save = (w) => { const cw = prefs().colw || {}; cw[step] = { ...(cw[step] || {}), [side]: w }; setPref("colw", cw); };
+        let d0 = null;
+        hd.addEventListener("pointerdown", (e) => { d0 = { x: e.clientX, w: width() }; hd.setPointerCapture(e.pointerId); hd.classList.add("dragging"); document.body.classList.add("col-dragging"); e.preventDefault(); });
+        hd.addEventListener("pointermove", (e) => { if (d0) d0.cur = setW(d0.w + (side === "l" ? 1 : -1) * (e.clientX - d0.x)); });
+        const end = () => { if (!d0) return; if (d0.cur) save(d0.cur); d0 = null; hd.classList.remove("dragging"); document.body.classList.remove("col-dragging"); relayout(); };
+        hd.addEventListener("pointerup", end); hd.addEventListener("pointercancel", end);
+        hd.addEventListener("dblclick", () => { const cw = prefs().colw || {}; if (cw[step]) delete cw[step][side]; setPref("colw", cw); applyColW(); relayout(); });
+        hd.addEventListener("keydown", (e) => { if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return; e.preventDefault(); save(setW(width() + ((e.key === "ArrowRight") === (side === "l") ? 16 : -16))); });
+      });
+      new ResizeObserver(() => placeVSplits()).observe(ws);
+    }
+    // two stacked panes in a side column: a handle between them sets the first one's height
+    for (const col of document.querySelectorAll(".ws > .col")) {
+      const panes = [...col.querySelectorAll(":scope > .pane")]; if (panes.length < 2) continue;
+      const top = panes[0], key = [...top.classList].find((c) => c.endsWith("-pane")) || "pane";
+      const hd = h("div", { class: "hsplit", role: "separator", "aria-orientation": "horizontal", tabindex: "0", title: "Drag to share the space between these panels; double-click to reset", "aria-label": "Resize panels" });
+      top.after(hd);
+      const setHt = (px) => { if (px == null) { top.classList.remove("sized"); top.style.removeProperty("flex"); top.style.removeProperty("height"); col.classList.remove("split-sized"); return; }
+        const total = col.getBoundingClientRect().height; px = Math.round(Math.max(80, total > 200 ? Math.min(total - 90, px) : px)); // hidden step: keep the saved size as is
+        top.classList.add("sized"); top.style.flex = `0 0 ${px}px`; top.style.height = `${px}px`; col.classList.add("split-sized"); relayout(); return px; };
+      hd._set = setHt; hd._key = key;
+      const ph = prefs().paneh || {}; if (ph[key]) setHt(ph[key]);
+      let d0 = null;
+      hd.addEventListener("pointerdown", (e) => { d0 = { y: e.clientY, h: top.getBoundingClientRect().height }; hd.setPointerCapture(e.pointerId); hd.classList.add("dragging"); document.body.classList.add("row-dragging"); e.preventDefault(); });
+      hd.addEventListener("pointermove", (e) => { if (d0) d0.cur = setHt(d0.h + e.clientY - d0.y); });
+      const end = () => { if (!d0) return; if (d0.cur) { const p2 = prefs().paneh || {}; p2[key] = d0.cur; setPref("paneh", p2); } d0 = null; hd.classList.remove("dragging"); document.body.classList.remove("row-dragging"); relayout(); };
+      hd.addEventListener("pointerup", end); hd.addEventListener("pointercancel", end);
+      hd.addEventListener("dblclick", () => { setHt(null); const p2 = prefs().paneh || {}; delete p2[key]; setPref("paneh", p2); relayout(); });
+      hd.addEventListener("keydown", (e) => { if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return; e.preventDefault(); const v = setHt(top.getBoundingClientRect().height + (e.key === "ArrowDown" ? 24 : -24)); const p2 = prefs().paneh || {}; p2[key] = v; setPref("paneh", p2); });
+    }
+    applyColW();
+    window.addEventListener("resize", () => placeVSplits());
+    // View menu
+    const btn = $("btn-view"), menu = $("view-menu");
+    const open = (on) => { menu.hidden = !on; btn.setAttribute("aria-expanded", String(on)); if (on) { applySides(); menu.querySelector(".menu-item:not(:disabled)")?.focus(); } };
+    btn.onclick = (e) => { e.stopPropagation(); open(menu.hidden); };
+    document.addEventListener("pointerdown", (e) => { if (!menu.hidden && !e.target.closest("#view-menu-wrap")) open(false); });
+    menu.addEventListener("keydown", (e) => {
+      const items = [...menu.querySelectorAll(".menu-item:not(:disabled)")], i = items.indexOf(document.activeElement);
+      if (e.key === "Escape") { open(false); btn.focus(); e.preventDefault(); }
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); items[(i + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus(); }
+    });
+    menu.addEventListener("click", (e) => { if (e.target.closest(".menu-item")) setTimeout(() => open(false), 0); });
+    $("btn-reset-layout").onclick = resetLayout;
+  }
+  /** Everything about the workspace back to the defaults: hidden / folded panels, column widths, pane splits, editor split. */
+  function resetLayout() {
+    for (const k of ["sides", "colw", "paneh", "folds", "edH"]) setPref(k, k === "edH" ? null : {});
+    document.querySelectorAll(".hsplit").forEach((hd) => hd._set && hd._set(null));
+    document.querySelectorAll("[data-collapsible]").forEach((pane) => { pane.classList.remove("folded"); const b = pane.querySelector(":scope > header .pane-fold:last-child"); if (b && b.hasAttribute("aria-expanded")) { b.textContent = "▾"; b.setAttribute("aria-expanded", "true"); } });
+    const center = $("split-design").parentElement; center.style.removeProperty("--ed-h");
+    applySides(); applyColW(); relayout(); toast("Layout reset.");
+  }
+
   // ------------------------------------------------------------------ init
   // preview realism: the world screenshot behind screens and the NPC's real model + skin
   const worldOpts = () => ({ bgImage: state.bgImage || null, npcSkin: state.npcSkin || null, npcGeo: G.CLBAssets && G.CLBAssets.npcGeo });
@@ -4838,7 +5108,7 @@ body.stage-dragging, body.stage-dragging * { user-select: none !important; -webk
     await new Promise((res) => { const im = new Image(); im.onload = () => { state.bgImage = im; res(); }; im.onerror = () => res(); im.src = G.CLBAssets.background; });
   }
   async function init() {
-    await B.init(); await loadWorldAssets(); setupWorkspace();
+    await B.init(); await loadWorldAssets(); setupWorkspace(); setupResizers();
     state.editor = G.CLEditor.createEditor($("canvas"), {
       getColor: (w) => state[w], setColor: (w, c) => setColor(w, c), onCommit: afterPixels, toast, onStatus: (s) => { $("ed-status").textContent = s; },
       onNine: () => { renderMini(); const n = art()?.nine; if (n) document.querySelectorAll(".nine-row input").forEach((inp, i) => (inp.value = n[["l", "t", "r", "b"][i]])); },
