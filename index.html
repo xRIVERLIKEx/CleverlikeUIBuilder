@@ -540,7 +540,11 @@ main { flex: 1; display: flex; min-height: 0; }
 .icon-pick { display: flex; flex-wrap: wrap; gap: 3px; }
 .icon-pick button { all: unset; cursor: pointer; width: 24px; height: 24px; border-radius: 4px; display: grid; place-items: center; border: 1px solid var(--line); background: var(--sunk); }
 .icon-pick button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
-.icon-pick canvas, .icon-pick img { width: 16px; height: 16px; image-rendering: pixelated; }
+.icon-pick canvas, .icon-pick img { width: 16px; height: 16px; image-rendering: pixelated; object-fit: contain; }
+.icon-pick button.starter { opacity: .6; } .icon-pick button.starter:hover { opacity: 1; }
+.icon-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; align-items: center; }
+.icon-actions .icon-detail { font-size: .78rem; padding: 3px 4px; max-width: 160px; }
+.icon-path { margin-top: 6px; font-size: .8rem; } .icon-path summary { cursor: pointer; color: var(--muted); } .icon-path small { display: block; margin: 4px 0; }
 .items-list { display: grid; gap: 4px; }
 .item-row { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; font-size: .82rem; }
 
@@ -1484,6 +1488,29 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
   // blend two colors; towards a transparent end only the alpha fades (no gray from the transparent pixel's black)
   const mix = (a, b, t) => { if (!a[3]) a = [b[0], b[1], b[2], 0]; if (!b[3]) b = [a[0], a[1], a[2], 0]; return [0, 1, 2, 3].map((i) => Math.round(a[i] + (b[i] - a[i]) * t)); };
 
+  /* Tool cursors (the way Photoshop, Paint.NET and Aseprite do it): a tool with a real tip (pencil, eyedropper) is the
+   * icon itself with the hotspot on the tip; a tool without one (bucket, gradient, eraser...) gets a small crosshair as the
+   * exact point, with the tool icon beside it, down and to the right. Black lines with a white halo show on any color. */
+  const CURSOR_CACHE = {};
+  const TIP = { pencil: [2.3, 21.7], picker: [2.3, 21.7] }; // tip of the 24×24 icon
+  function toolCursor(tool) {
+    if (CURSOR_CACHE[tool]) return CURSOR_CACHE[tool];
+    const raw = G.CLUIIcons?.[tool] || ""; const body = raw.replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
+    const draw = (inner, sw) => `<g fill="none" stroke-linecap="round" stroke-linejoin="round"><g stroke="#fff" stroke-width="${sw + 2.5}">${inner}</g><g stroke="#000" stroke-width="${sw}">${inner}</g></g>`;
+    let svg, hx, hy;
+    if (TIP[tool]) { // the icon, its tip on the hotspot (icon box at 1,7 in the 32×32 cursor)
+      const ox = 1, oy = 7; hx = Math.round(ox + TIP[tool][0]); hy = Math.round(oy + TIP[tool][1]);
+      svg = draw(`<g transform="translate(${ox} ${oy})">${body}</g>`, 1.8);
+    } else { // crosshair at 7,7 + the icon (18 px) down-right
+      hx = 7; hy = 7;
+      const cross = `<path d="M7 1v4M7 9v4M1 7h4M9 7h4"/>`;
+      svg = draw(cross, 1.5) + `<rect x="6.5" y="6.5" width="1" height="1" fill="#000" stroke="#fff" stroke-width=".6"/>` +
+        (body ? draw(`<g transform="translate(13 13) scale(.75)">${body}</g>`, 2.2) : "");
+    }
+    const url = "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">${svg}</svg>`);
+    return (CURSOR_CACHE[tool] = `url("${url}") ${hx} ${hy}, crosshair`);
+  }
+
   function createEditor(canvas, hooks) {
     const ctx = canvas.getContext("2d");
     const st = { asset: null, stateIdx: 0, layerIdx: 0, tool: "pencil", zoom: 16, ox: 0, oy: 0, grid: true, onion: false,
@@ -1718,7 +1745,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       const px = R.get(R.composite(stateObj().layers, a.w, a.h), q.x, q.y);
       hooks.onStatus?.(q.x >= 0 && q.y >= 0 && q.x < a.w && q.y < a.h ? `${q.x}, ${q.y}  ·  ${px[3] ? R.rgbaToHex(px) : "transparent"}` : "");
       const d = st.drag;
-      if (!d) { const g = guideAt(p.cx, p.cy); canvas.style.cursor = g ? (g === "l" || g === "r" ? "col-resize" : "row-resize") : st.space ? "grab" : st.tool === "move" ? "move" : "crosshair"; if (g !== st.guide) { st.guide = g; } render(); return; }
+      if (!d) { const g = guideAt(p.cx, p.cy); canvas.style.cursor = g ? (g === "l" || g === "r" ? "col-resize" : "row-resize") : st.space ? "grab" : toolCursor(st.tool); if (g !== st.guide) { st.guide = g; } render(); return; }
       if (d.kind === "pan") { st.ox = d.ox + p.cx - d.sx; st.oy = d.oy + p.cy - d.sy; st.autoFit = false; render(); return; }
       if (d.kind === "guide") {
         const n = a.nine, gx = Math.round((p.cx - st.ox) / st.zoom), gy = Math.round((p.cy - st.oy) / st.zoom);
@@ -1778,7 +1805,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       if (k === "-") { zoomAt(0.8, canvas.clientWidth / 2, canvas.clientHeight / 2); }
       if (k === "0") fit();
     });
-    window.addEventListener("keyup", (e) => { if (e.code === "Space") { st.space = false; canvas.style.cursor = "crosshair"; } });
+    window.addEventListener("keyup", (e) => { if (e.code === "Space") { st.space = false; canvas.style.cursor = toolCursor(st.tool); } });
 
     // ---------------- clipboard (system clipboard images paste in exactly via the PNG codec)
     function cancelFloating() { if (liftedFrom) { layerObj().img = liftedFrom; liftedFrom = null; } st.floating = null; render(); }
@@ -1788,8 +1815,13 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       st.clipboard = img; hooks.toast?.("Copied.");
       if (navigator.clipboard?.write && window.ClipboardItem) G.CLPng.encode(img).then((b) => navigator.clipboard.write([new ClipboardItem({ "image/png": new Blob([b], { type: "image/png" }) })])).catch(() => {});
     }
-    function pasteImg(img) {
+    async function pasteImg(img) {
       if (!asset()) return;
+      const a0 = asset();
+      if ((img.w > a0.w || img.h > a0.h) && G.CLResize) { // offer to shrink it to the canvas instead of only warning
+        img = await G.CLResize.ask(img, { reason: "canvas", fitW: a0.w, fitH: a0.h, allowAsIs: true, asIsLabel: "Paste at full size", title: "Resize before pasting?" });
+        if (!img || asset() !== a0) return;
+      }
       commitFloating();
       st.floating = { img, x: st.sel?.x ?? 0, y: st.sel?.y ?? 0 }; setTool("select"); render();
       hooks.toast?.(img.w > asset().w || img.h > asset().h ? "Pasted (bigger than the canvas: drag to position, Enter to place)." : "Pasted: drag to position, Enter to place.");
@@ -1807,7 +1839,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
       layerObj().img = R.flip(layerObj().img, horizontal); hooks.onCommit(); render();
     }
 
-    function setTool(t) { if (t !== "select") commitFloating(); if (t === "picker" && st.tool !== "picker") st.prevTool = st.tool; st.tool = t; hooks.onTool?.(t); render(); }
+    function setTool(t) { if (t !== "select") commitFloating(); if (t === "picker" && st.tool !== "picker") st.prevTool = st.tool; st.tool = t; if (!st.space && !st.drag) canvas.style.cursor = toolCursor(t); hooks.onTool?.(t); render(); }
     function setTarget(a, stateIdx = 0, layerIdx = 0, refit = false) {
       commitFloating();
       const changed = a !== st.asset; st.asset = a; st.stateIdx = Math.min(stateIdx, (a?.states.length || 1) - 1);
@@ -1848,6 +1880,167 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     return out;
   }
   G.CLEditor = { createEditor, paintOptions };
+})(typeof window !== "undefined" ? window : globalThis);
+
+</script>
+<script>
+/* Cleverlike UI Studio / Builder — "this image is too big: resize it?" prompt, shared by every place images come in
+ * (import, icon import, paste, drop). Instead of refusing, it offers sizes and a resampling method, with a preview.
+ *   CLResize.ask(img, { reason, max, fitW, fitH, presets: [{label, w, h}], allowAsIs }) → Promise<img | null>
+ *   CLResize.resample(img, w, h, "pixel" | "smooth"), CLResize.blockSize(img) */
+(function (G) {
+  "use strict";
+  const R = G.CLRaster;
+
+  /** Nearest neighbour: keeps hard pixel edges (pixel art). */
+  function nearest(im, w, h) {
+    const o = R.create(w, h);
+    for (let y = 0; y < h; y++) { const sy = Math.min(im.h - 1, Math.floor(((y + 0.5) * im.h) / h)); for (let x = 0; x < w; x++) { const sx = Math.min(im.w - 1, Math.floor(((x + 0.5) * im.w) / w)); const i = (sy * im.w + sx) * 4, j = (y * w + x) * 4; o.d[j] = im.d[i]; o.d[j + 1] = im.d[i + 1]; o.d[j + 2] = im.d[i + 2]; o.d[j + 3] = im.d[i + 3]; } }
+    return o;
+  }
+  /** Area average (alpha-weighted, so transparent pixels don't darken edges): best for photos and smooth art when shrinking. */
+  function smooth(im, w, h) {
+    if (w >= im.w || h >= im.h) return nearest(im, w, h);
+    const o = R.create(w, h), kx = im.w / w, ky = im.h / h;
+    for (let y = 0; y < h; y++) {
+      const y0 = y * ky, y1 = y0 + ky;
+      for (let x = 0; x < w; x++) {
+        const x0 = x * kx, x1 = x0 + kx; let r = 0, g = 0, b = 0, a = 0, area = 0;
+        for (let sy = Math.floor(y0); sy < Math.ceil(y1); sy++) {
+          const wy = Math.min(y1, sy + 1) - Math.max(y0, sy); if (wy <= 0) continue;
+          for (let sx = Math.floor(x0); sx < Math.ceil(x1); sx++) {
+            const wx = Math.min(x1, sx + 1) - Math.max(x0, sx); if (wx <= 0) continue;
+            const i = (Math.min(im.h - 1, sy) * im.w + Math.min(im.w - 1, sx)) * 4, wt = wx * wy, al = im.d[i + 3] / 255;
+            r += im.d[i] * al * wt; g += im.d[i + 1] * al * wt; b += im.d[i + 2] * al * wt; a += al * wt; area += wt;
+          }
+        }
+        const j = (y * w + x) * 4;
+        if (a > 0) { o.d[j] = Math.round(r / a); o.d[j + 1] = Math.round(g / a); o.d[j + 2] = Math.round(b / a); }
+        o.d[j + 3] = Math.round((255 * a) / area);
+      }
+    }
+    return o;
+  }
+  /** Center the image on a transparent square (icons are drawn into a square box, so a tall picture must not be stretched). */
+  function padSquare(im) {
+    if (im.w === im.h) return im; const n = Math.max(im.w, im.h), o = R.create(n, n), ox = Math.floor((n - im.w) / 2), oy = Math.floor((n - im.h) / 2);
+    for (let y = 0; y < im.h; y++) o.d.set(im.d.subarray(y * im.w * 4, (y + 1) * im.w * 4), ((y + oy) * n + ox) * 4);
+    return o;
+  }
+  /** Flat / pixel art (few colors) shrinks best with sharp pixels even when it isn't an exact multiple; photos look better smoothed. */
+  function looksFlat(im) {
+    const counts = new Map(); let n = 0;
+    const step = Math.max(1, Math.floor((im.w * im.h) / 40000));
+    for (let i = 0; i < im.d.length; i += 4 * step) { if (im.d[i + 3] < 128) continue; const k = (im.d[i] >> 3) << 10 | (im.d[i + 1] >> 3) << 5 | (im.d[i + 2] >> 3); counts.set(k, (counts.get(k) || 0) + 1); n++; }
+    if (!n) return true;
+    const top = [...counts.values()].sort((a, b) => b - a).slice(0, 24).reduce((a, b) => a + b, 0);
+    return top / n > 0.9;
+  }
+  const resample = (im, w, h, method) => (method === "smooth" ? smooth : nearest)(im, Math.max(1, Math.round(w)), Math.max(1, Math.round(h)));
+
+  /** Pixel art that was blown up (a screenshot, a 4× export) is made of k×k blocks: return the biggest such k (1 = none). */
+  function blockSize(im) {
+    const gcd = (a, b) => (b ? gcd(b, a % b) : a), g = gcd(im.w, im.h);
+    let flat = true; for (let i = 4; i < im.d.length && flat; i += 4) if (im.d[i] !== im.d[0] || im.d[i + 1] !== im.d[1] || im.d[i + 2] !== im.d[2] || im.d[i + 3] !== im.d[3]) flat = false;
+    if (flat) return 1; // one solid color: no evidence of enlarged pixel art
+    for (let k = Math.min(g, 64); k >= 2; k--) {
+      if (g % k || im.w / k < 4 || im.h / k < 4) continue; let ok = true;
+      for (let y = 0; y < im.h && ok; y++) {
+        const by = y - (y % k);
+        for (let x = 0; x < im.w; x++) { const bx = x - (x % k); if (bx === x && by === y) continue; const i = (y * im.w + x) * 4, j = (by * im.w + bx) * 4; if (im.d[i] !== im.d[j] || im.d[i + 1] !== im.d[j + 1] || im.d[i + 2] !== im.d[j + 2] || im.d[i + 3] !== im.d[j + 3]) { ok = false; break; } }
+      }
+      if (ok) return k;
+    }
+    return 1;
+  }
+  const fit = (w, h, mw, mh) => { const k = Math.min(1, mw / w, mh / h); return [Math.max(1, Math.round(w * k)), Math.max(1, Math.round(h * k))]; };
+
+  let dlg = null;
+  function el(tag, attrs, ...kids) { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs || {})) { if (v == null || v === false) continue; if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else if (k === "text") e.textContent = v; else e.setAttribute(k, v === true ? "" : v); } e.append(...kids.flat().filter((x) => x != null)); return e; }
+  function css() {
+    if (document.getElementById("rsz-css")) return;
+    document.head.append(el("style", { id: "rsz-css", text: `
+#dlg-resize .rsz { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 16px; align-items: start; }
+@media (max-width: 620px) { #dlg-resize .rsz { grid-template-columns: 1fr; } }
+#dlg-resize .rsz-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+#dlg-resize .rsz-presets button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+#dlg-resize .rsz-wh { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+#dlg-resize .rsz-wh input[type=number] { width: 84px; }
+#dlg-resize .rsz-prev { border: 1px solid var(--line); border-radius: 6px; background: repeating-conic-gradient(#cbd5e1 0 25%, #f1f5f9 0 50%) 0 0 / 12px 12px; height: 200px; display: grid; place-items: center; overflow: hidden; }
+#dlg-resize .rsz-prev canvas { image-rendering: pixelated; max-width: 100%; max-height: 100%; }
+#dlg-resize .rsz-meta { font-size: .8rem; color: var(--muted); margin-top: 6px; text-align: center; }
+#dlg-resize .rsz-warn { color: var(--warn, #b45309); font-size: .82rem; margin: 0; }` }));
+  }
+
+  /** Ask how to resize. opts.reason: "max" (bigger than opts.max, default 256) or "canvas" (bigger than fitW × fitH). */
+  function ask(img, opts = {}) {
+    css();
+    const max = opts.max || 256, fitW = opts.fitW || max, fitH = opts.fitH || max, k = blockSize(img);
+    if (dlg) dlg.remove();
+    // size choices
+    const presets = [];
+    if (k > 1) presets.push({ label: `Original pixels (÷${k}) · ${img.w / k}×${img.h / k}`, w: img.w / k, h: img.h / k, method: "pixel", id: "block" });
+    for (const p of opts.presets || []) { const [w, h] = p.exact ? [p.w, p.h] : fit(img.w, img.h, p.w, p.h); const sq = opts.square ? Math.max(w, h) : 0; presets.push({ label: `${p.label} · ${sq ? `${sq}×${sq}` : `${w}×${h}`}`, w, h, id: p.label }); }
+    const [fw, fh] = fit(img.w, img.h, fitW, fitH);
+    const lab = (w, h) => (opts.square ? `${Math.max(w, h)}×${Math.max(w, h)}` : `${w}×${h}`);
+    presets.push({ label: `${opts.reason === "canvas" ? "Fit the canvas" : `Fit within ${max} px`} · ${lab(fw, fh)}`, w: fw, h: fh, id: "fit" });
+    for (const d of [2, 4, 8]) { const w = Math.round(img.w / d), h = Math.round(img.h / d); if (w >= 1 && h >= 1 && w <= fitW && h <= fitH && !presets.some((p) => p.w === w && p.h === h)) { presets.push({ label: `1/${d} · ${lab(w, h)}`, w, h, id: "d" + d }); break; } }
+    // starting choice: the block size if it fits, else the first caller preset, else fit
+    const firstFit = presets.find((p) => p.w <= fitW && p.h <= fitH) || presets[presets.length - 1];
+    const st = { w: firstFit.w, h: firstFit.h, lock: true, method: firstFit.method || (k > 1 || (img.w <= 64 && img.h <= 64) || looksFlat(img) ? "pixel" : "smooth"), preset: firstFit.id, pad: !!opts.square && img.w !== img.h };
+    const make = () => { const o = resample(img, st.w, st.h, st.method); return st.pad ? padSquare(o) : o; };
+    const ratio = img.w / img.h;
+
+    return new Promise((resolve) => {
+      let done = false; const finish = (v) => { if (done) return; done = true; dlg.close(); dlg.remove(); dlg = null; resolve(v); };
+      const W = el("input", { type: "number", min: 1, max: 1024, value: st.w, "aria-label": "Width" }), H = el("input", { type: "number", min: 1, max: 1024, value: st.h, "aria-label": "Height" });
+      const lock = el("input", { type: "checkbox", checked: true });
+      const padBox = el("input", { type: "checkbox", checked: st.pad }); padBox.addEventListener("change", () => { st.pad = padBox.checked; draw(); });
+      const presetBox = el("div", { class: "rsz-presets" });
+      const methodBox = el("div", { class: "rsz-presets" });
+      const prev = el("div", { class: "rsz-prev" }), meta = el("div", { class: "rsz-meta" }), warn = el("p", { class: "rsz-warn" });
+      const ok = el("button", { class: "btn primary", type: "button", onclick: () => finish(make()) }, "Resize and use");
+      const draw = () => {
+        presetBox.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.id === st.preset)));
+        methodBox.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.m === st.method)));
+        W.value = st.w; H.value = st.h;
+        const out = make(), c = R.toCanvas(out), z = Math.max(1, Math.floor(Math.min(190 / out.w, 190 / out.h)));
+        c.style.width = out.w * z + "px"; c.style.height = out.h * z + "px"; prev.replaceChildren(c);
+        meta.textContent = `${img.w}×${img.h} → ${out.w}×${out.h}${st.pad && (st.w !== st.h) ? ` (picture ${st.w}×${st.h}, centered)` : ""}${z > 1 ? ` · shown ${z}×` : ""}`;
+        const tooBig = st.w > fitW || st.h > fitH;
+        warn.textContent = tooBig ? (opts.reason === "canvas" ? `Still bigger than the canvas (${fitW}×${fitH}); you can drag it into place.` : `Still bigger than ${max} px.`) : "";
+        ok.disabled = opts.reason !== "canvas" && (st.w > max || st.h > max);
+      };
+      for (const p of presets) presetBox.append(el("button", { class: "btn small", type: "button", "data-id": p.id, onclick: () => { st.w = p.w; st.h = p.h; st.preset = p.id; if (p.method) st.method = p.method; draw(); } }, p.label));
+      methodBox.append(
+        el("button", { class: "btn small", type: "button", "data-m": "pixel", title: "Nearest pixel: keeps hard edges. Best for pixel art.", onclick: () => { st.method = "pixel"; draw(); } }, "Pixel art (sharp)"),
+        el("button", { class: "btn small", type: "button", "data-m": "smooth", title: "Averages pixels: best for photos and smooth drawings when shrinking.", onclick: () => { st.method = "smooth"; draw(); } }, "Smooth (photos)"));
+      W.addEventListener("input", () => { st.w = Math.max(1, Math.min(1024, Number(W.value) || 1)); if (st.lock) st.h = Math.max(1, Math.round(st.w / ratio)); st.preset = ""; draw(); });
+      H.addEventListener("input", () => { st.h = Math.max(1, Math.min(1024, Number(H.value) || 1)); if (st.lock) st.w = Math.max(1, Math.round(st.h * ratio)); st.preset = ""; draw(); });
+      lock.addEventListener("change", () => { st.lock = lock.checked; });
+      const why = opts.reason === "canvas"
+        ? `This image is ${img.w}×${img.h}, bigger than the canvas (${fitW}×${fitH}).`
+        : `This image is ${img.w}×${img.h}. UI textures need to be ${max} px or smaller${opts.hint ? ` (${opts.hint})` : ""}.`;
+      dlg = el("dialog", { class: "dlg", id: "dlg-resize", "aria-labelledby": "rsz-h" },
+        el("div", { class: "dlg-head" }, el("h2", { class: "label", id: "rsz-h", text: opts.title || "Resize the image?" }), el("p", { text: why + (k > 1 ? ` It looks like pixel art enlarged ${k}×, so it can shrink back without losing detail.` : "") })),
+        el("div", { class: "dlg-body" }, el("div", { class: "rsz" },
+          el("div", { style: "display:grid;gap:12px" },
+            el("div", { class: "field" }, el("span", { text: "Size" }), presetBox),
+            el("div", { class: "rsz-wh" }, el("label", { class: "field" }, el("span", { text: "Width" }), W), el("label", { class: "field" }, el("span", { text: "Height" }), H), el("label", { class: "check" }, lock, "Keep proportions")),
+            opts.square ? el("label", { class: "check" }, padBox, "Center on a square (icons are drawn square, so this stops stretching)") : null,
+            el("div", { class: "field" }, el("span", { text: "Method" }), methodBox),
+            warn),
+          el("div", {}, prev, meta))),
+        el("div", { class: "dlg-foot" },
+          el("button", { class: "btn", type: "button", onclick: () => finish(null) }, "Cancel"),
+          opts.allowAsIs ? el("button", { class: "btn", type: "button", onclick: () => finish(img) }, opts.asIsLabel || "Use as is") : null,
+          ok));
+      dlg.addEventListener("cancel", (e) => { e.preventDefault(); finish(null); });
+      document.body.append(dlg); dlg.showModal(); draw(); ok.focus();
+    });
+  }
+
+  G.CLResize = { ask, resample, blockSize, nearest, smooth, padSquare, looksFlat };
 })(typeof window !== "undefined" ? window : globalThis);
 
 </script>
@@ -2524,6 +2717,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
         if (tall > 262) warn(`The screen is ${tall}px tall with everything on it, but a 1080p screen is 270 GUI px (GUI scale 4), so it runs off the top and bottom.${ctl && !ctl.props.scroll ? ` Turn on scrolling in ${ctl.name} (its Scroll option), or remove some items.` : ""}`, ctl || p.root);
       } catch (e) { /* layout not loaded (tests in node) */ }
     }
+    for (const n of nodes) { const ic = (n.kind === "button" || n.kind === "placed") && n.props.icon && asset(p, n.props.icon); if (ic && ic.w !== ic.h) warn(`Icon "${ic.name}" on ${n.props.label || n.name} is ${ic.w}×${ic.h}, not square: the game stretches it to a square. Re-import it (it's centered on a square) or resize its canvas in Design.`, n); }
     for (const n of nodes) if (n.hidden) warn(`${n.name} is hidden in the preview (eye icon) but still exported and shown in game.`, n);
     for (const n of nodes) if (n.kind === "buttons" && n.props.layout === "grid") tests.push(`${n.name}: the grid is sized for its ${n.children.length} button${n.children.length === 1 ? "" : "s"} (${Math.ceil(n.children.length / Math.max(1, Number(n.props.cols) || 4))} row(s)). Add a Button item for each button the script shows, or extra ones spill past the window.`);
     return { errors, warnings, tests };
@@ -2777,7 +2971,7 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     const W = opts.W || 427, H = opts.H || 240, D = p.density || 1, S = opts.scale || 2;
     const lay = layout(p, W, H), cache = opts.cache || new Map();
     // drawing is split into segments at each NPC model, so later elements in the hierarchy draw over the model (front-to-back = tree order)
-    let img = R.create(W * D, H * D), texts = []; const segs = [], lateFrames = []; // frames set "in front" draw after everything else
+    let img = R.create(W * D, H * D), texts = [], hiIcons = []; const segs = [], lateFrames = []; // frames set "in front" draw after everything else
     // the world behind: Minecraft dims it under every screen (a bit more for forms), plus any extra dim set on a full-screen root
     const extraDim = p.root.props.mode === "screen" ? Number(p.root.props.dim) || 0 : 0, baseDim = p.type === "npc" ? 0.35 : 0.5;
     const worldDim = 1 - (1 - baseDim) * (1 - extraDim), models = [];
@@ -2789,6 +2983,10 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     let iconClip = null;
     const drawIcon = (ic, x, y, size) => {
       const r = iconImg(ic); if (!r) return;
+      // an icon with more texture pixels than the preview grid (a 32×32 or 64×64 icon on a 16 GUI px button) is drawn at screen
+      // resolution, like the game does at GUI scale 2–4, so its extra detail shows
+      const src = r.a ? r.a : r.vanilla && opts.vanillaImgs && opts.vanillaImgs.get(r.vanilla.path);
+      if (src && (r.a ? r.a.w : src.w) > size * D + 0.01) { hiIcons.push({ a: r.a, im: r.a ? null : src, x, y, size, clip: iconClip }); return; }
       if (r.a) drawArt(img, D, r.a, "default", x, y, size, size, cache, iconClip);
       else if (r.vanilla && opts.vanillaImgs && opts.vanillaImgs.get(r.vanilla.path)) { const v = opts.vanillaImgs.get(r.vanilla.path); R.drawOverInPlace(img, R.nineStretch(v, { l: 0, t: 0, r: 0, b: 0 }, size * D, size * D), Math.round(x * D), Math.round(y * D)); }
     };
@@ -2894,15 +3092,15 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
         if (opts.npcSkin && G.CLBModel3D) // unlocked = what the game draws today: fixed slight turn, head straight; locked = the pose the pack forces in game
           models.push({ id: n.id, x, y, w: b.w, h: b.h, free: P.mode === "free", z: (Number(P.zoom) || 100) / 100, px: Number(P.panX) || 0, py: Number(P.panY) || 0,
             yaw: P.lockPose ? P.poseYaw ?? 15 : 15, head: P.lockPose ? [Number(P.headYaw) || 0, Number(P.headPitch) || 0] : [0, 0] });
-        if (models.length) { segs.push({ img, texts, models: models.splice(0) }); img = R.create(W * D, H * D); texts = []; }
+        if (models.length) { segs.push({ img, texts, hiIcons, models: models.splice(0) }); img = R.create(W * D, H * D); texts = []; hiIcons = []; }
         else if (P.mode === "free") npcFigure(img, D, x - b.w * 0.1, y - b.h * 0.05, b.w * 1.2, b.h * 1.1, true); else npcFigure(img, D, x, y, b.w, b.h);
         continue;
       }
     }
 
     // to canvas at S screen px per texture px; per segment: UI pixels, then its text, then its NPC model
-    segs.push({ img, texts, models: models.splice(0) });
-    if (lateFrames.length) { img = R.create(W * D, H * D); for (const b of lateFrames) drawFrame(p, img, D, b.node, b.ax, b.ay, b.w, b.h, cache, "edges"); segs.push({ img, texts: [], models: [] }); }
+    segs.push({ img, texts, hiIcons, models: models.splice(0) });
+    if (lateFrames.length) { img = R.create(W * D, H * D); for (const b of lateFrames) drawFrame(p, img, D, b.node, b.ax, b.ay, b.w, b.h, cache, "edges"); segs.push({ img, texts: [], hiIcons: [], models: [] }); }
     const g = S * D; // screen px per GUI px
     const canvas = document.createElement("canvas"); canvas.width = W * D * S; canvas.height = H * D * S;
     const ctx = canvas.getContext("2d"); lay.models = [];
@@ -2914,6 +3112,12 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     ctx.textBaseline = "top"; ctx.imageSmoothingEnabled = false;
     for (const seg of segs) {
       ctx.drawImage(R.toCanvas(seg.img, S), 0, 0);
+      for (const ic of seg.hiIcons || []) { // sharp icons: nearest-pixel scaling straight to the screen
+        const key = ic.a ? "hiicon|" + ic.a.id + "|" + ic.a.states[0].id : null;
+        let c = key && opts.cache && opts.cache.get(key); if (!c) { c = R.toCanvas(ic.a ? K.flat(ic.a, ic.a.states[0]) : ic.im); if (key && opts.cache) opts.cache.set(key, c); }
+        ctx.save(); if (ic.clip) { ctx.beginPath(); ctx.rect(ic.clip[0] * g, ic.clip[1] * g, ic.clip[2] * g, ic.clip[3] * g); ctx.clip(); }
+        ctx.imageSmoothingEnabled = false; ctx.drawImage(c, Math.round(ic.x * g), Math.round(ic.y * g), Math.round(ic.size * g), Math.round(ic.size * g)); ctx.restore();
+      }
       const texts = seg.texts, models = seg.models;
       for (const t of texts) {
         const size = 8 * g * t.sc, lines = t.lines || [t.s];
@@ -4332,17 +4536,41 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     commit(); toast(`New ${w}×${hh} texture "${nm}" for ${n.name}${big ? " (capped at 256 px)" : ""}. Paint it here.`);
     state.artId = a.id; state.artCtx = { nodeId: n.id, part: part.key }; state.stateIdx = 0; setStep("design");
   }
+  /** Icon for a button: project icons (starter copies, ones you made, imported or copied from the game), the starter set,
+   *  and ways to add more: New (blank, painted in Design), Import PNG, From game textures, Edit the current one. */
+  function iconSizeOf(n) { const par = n.kind === "button" ? B.all(state.p).find((x) => x.children && x.children.includes(n)) : null; return Math.max(4, Number((par || n).props.iconSize) || 16); }
+  function newIcon(n) {
+    const p = state.p, D = Math.max(p.density || 1, state.iconDetail || 1), sz = Math.min(256, Math.round(iconSizeOf(n) * D));
+    let nm = B.slug(`icon_${n.props.label || n.name}`), i = 2; const base = nm; while (p.assets.some((x) => x.name === nm)) nm = `${base}_${i++}`;
+    const a = { id: K.uid(), name: nm, type: "sprite", stateSet: "single", folder: "icons", note: `Icon made for ${n.props.label || n.name}`, status: "draft", w: sz, h: sz, nine: null, density: D,
+      states: [{ id: K.uid(), name: "default", suffix: "", layers: [K.layer(R.create(sz, sz))] }] };
+    p.assets.push(a); n.props.icon = a.id; commit();
+    toast(`New ${sz}×${sz} icon "${nm}". Paint it here.`);
+    state.artId = a.id; state.artCtx = { nodeId: n.id, part: "icon" }; state.stateIdx = 0; setStep("design");
+  }
+  function editIcon(n) { const a = B.asset(state.p, n.props.icon); if (!a) return; state.artId = a.id; state.artCtx = { nodeId: n.id, part: "icon" }; state.stateIdx = 0; setStep("design"); }
   function iconPicker(n) {
-    const p = state.p, icons = p.assets.filter((a) => a.folder === "icons");
-    const starterIcons = G.CLStarter.assets.filter((a) => a.folder === "icons");
-    const cur = n.props.icon;
+    const p = state.p, icons = p.assets.filter((a) => a.folder === "icons"), cur = n.props.icon, curAsset = B.asset(p, cur);
+    const starterIcons = G.CLStarter.assets.filter((a) => a.folder === "icons" && !icons.some((x) => x.starter === a.name));
+    const pick = (id) => { n.props.icon = id; commit(); renderLayout(); };
+    const ctx = () => { state.artCtx = { nodeId: n.id, part: "icon" }; };
+    const sz = iconSizeOf(n), D = p.density || 1;
     return h("div", { class: "field" }, h("span", {}, "Icon (sent by the script)"),
       h("div", { class: "icon-pick" },
-        h("button", { type: "button", "aria-pressed": String(!cur), title: "No icon", onclick: () => { n.props.icon = ""; commit(); renderLayout(); } }, "–"),
-        ...starterIcons.map((sa) => { const have = icons.find((a) => a.starter === sa.name); const id = have && have.id;
-          return h("button", { type: "button", title: sa.name, "aria-pressed": String(!!id && cur === id), onclick: () => { n.props.icon = B.starterAsset(p, sa.name); commit(); renderLayout(); } }, h("img", { alt: sa.name, src: "data:image/png;base64," + sa.states[0].png })); })),
-      h("small", {}, "Or a vanilla path such as textures/ui/icon_book_writable:"),
-      txt(cur && !B.asset(p, cur) ? cur : "", (v) => { n.props.icon = v.trim(); commit(); renderLayout(); }));
+        h("button", { type: "button", "aria-pressed": String(!cur), title: "No icon", onclick: () => pick("") }, "–"),
+        ...icons.map((a) => h("button", { type: "button", title: `${a.name} · ${a.w}×${a.h}`, "aria-pressed": String(cur === a.id), onclick: () => pick(a.id) }, R.toCanvas(K.flat(a, a.states[0])))),
+        ...starterIcons.map((sa) => h("button", { type: "button", class: "starter", title: `${sa.name} (starter)`, onclick: () => pick(B.starterAsset(p, sa.name)) }, h("img", { alt: sa.name, src: "data:image/png;base64," + sa.states[0].png })))),
+      h("div", { class: "icon-actions" },
+        h("button", { type: "button", class: "btn small", title: "A blank icon at the chosen detail, opened in Design to paint", onclick: () => newIcon(n) }, "+ New icon"),
+        h("select", { class: "icon-detail", "aria-label": "Detail for new icons", title: "Detail for new icons. The icon still shows at the same size on the button; more detail means more pixels inside it. The game draws GUI pixels 2–4 screen pixels wide, so 2× or 4× looks sharper there.",
+          onchange: (e) => { state.iconDetail = Number(e.target.value); } },
+          ...[1, 2, 4].map((m) => { const px = Math.round(sz * Math.max(D, m)); return h("option", { value: m, selected: (state.iconDetail || 1) === m || undefined }, `${m}× detail · ${px}×${px}`); })),
+        h("button", { type: "button", class: "btn small", title: "Import a PNG as a new icon", onclick: () => { ctx(); state.importIcon = true; $("file-import").click(); } }, "Import PNG…"),
+        h("button", { type: "button", class: "btn small", title: "Copy one of Minecraft's own textures as a new icon", onclick: () => { ctx(); state.vanillaIcon = true; openVanilla("icon"); } }, "From game…"),
+        curAsset ? h("button", { type: "button", class: "btn small", title: "Open this icon in Design. Other buttons using it change too (Make unique there to split it off).", onclick: () => editIcon(n) }, "Edit") : null),
+      h("details", { class: "icon-path", open: !!(cur && !curAsset) || undefined }, h("summary", {}, "Use a game texture path instead"),
+        h("small", {}, "Points at the game's own file (nothing is copied), e.g. textures/ui/icon_book_writable"),
+        txt(cur && !curAsset ? cur : "", (v) => { n.props.icon = v.trim(); commit(); renderLayout(); })));
   }
   function textProps(n, withText) {
     const Pp = n.props, kids = [];
@@ -4808,26 +5036,40 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
   async function importPng(file) {
     const p = state.p; let img;
     try { img = file.type === "image/png" ? await PNG.decode(new Uint8Array(await file.arrayBuffer())) : await R.fromBlobOrURL(file); } catch (e) { toast(e.message); return; }
-    if (img.w > 256 || img.h > 256) { toast("That image is larger than 256 px. UI textures are small; crop it first."); return; }
-    const cur = art(), nine = cur && cur.type === "nine" ? R.detectNine(img) : null;
-    const a = { id: K.uid(), name: B.slug(file.name.replace(/\.\w+$/, ""), "imported"), type: nine ? "nine" : "sprite", stateSet: "single", folder: "", note: `Imported from ${file.name}`, status: "draft", w: img.w, h: img.h, nine, density: p.density || 1,
+    const asIcon = !!state.importIcon; state.importIcon = false;
+    const ctxNode = state.artCtx && B.find(p, state.artCtx.nodeId), isz = asIcon && ctxNode ? Math.round(iconSizeOf(ctxNode) * (p.density || 1)) : 0;
+    if (img.w > 256 || img.h > 256 || (asIcon && (img.w > isz * 4 || img.h > isz * 4))) { // too big: offer to resize instead of refusing
+      img = await G.CLResize.ask(img, { max: 256, presets: asIcon ? [{ label: "4× detail", w: isz * 4, h: isz * 4 }, { label: "2× detail", w: isz * 2, h: isz * 2 }, { label: "Icon size (1×)", w: isz, h: isz }] : [], allowAsIs: img.w <= 256 && img.h <= 256,
+        square: asIcon, hint: asIcon ? `this button's icons are ${isz}×${isz}` : "", title: asIcon ? "Resize the icon?" : "Resize the image?" });
+      if (!img) return;
+    }
+    if (asIcon && img.w !== img.h) img = G.CLResize.padSquare(img); // icons are drawn into a square: never stretch a tall or wide picture
+    const cur = art(), nine = !asIcon && cur && cur.type === "nine" ? R.detectNine(img) : null;
+    const a = { id: K.uid(), name: B.slug(file.name.replace(/\.\w+$/, ""), "imported"), type: nine ? "nine" : "sprite", stateSet: "single", folder: asIcon ? "icons" : "", note: `Imported from ${file.name}`, status: "draft", w: img.w, h: img.h, nine, density: p.density || 1,
       states: [{ id: K.uid(), name: "default", suffix: "", layers: [K.layer(img, "Imported")] }] };
     let i = 2; const base = a.name; while (p.assets.some((x) => x.name === a.name)) a.name = `${base}_${i++}`;
-    p.assets.push(a); const placed = assignToCtx(a.id); commit(true); state.artId = a.id; state.stateIdx = 0; renderDesign();
+    p.assets.push(a); const placed = assignToCtx(a.id); commit(true);
+    if (asIcon) { a.density = Math.max(1, Math.round(Math.max(img.w, img.h) / Math.max(1, isz / (p.density || 1))));
+      renderLayout(); toast(`Imported ${img.w}×${img.h} icon "${a.name}"${img.w > isz ? ` (${Math.round((img.w / isz) * 10) / 10}× detail: shown at the icon size, sharper in game)` : ""}.`); return; }
+    state.artId = a.id; state.stateIdx = 0; renderDesign();
     toast(placed ? `Imported ${img.w}×${img.h} and used it for the selected slot.` : `Imported ${img.w}×${img.h}. Pick it in an element's Art settings.`);
   }
   // vanilla picker
   async function vanillaImg(t) { if (!state.vanillaImgs.has(t.path)) state.vanillaImgs.set(t.path, await PNG.decode(PNG.b64ToBytes(t.png))); return state.vanillaImgs.get(t.path); }
-  function openVanilla() { $("dlg-vanilla").showModal(); $("van-search").value = ""; drawVanilla(); $("van-search").focus(); }
+  function openVanilla(mode) { if (mode !== "icon") state.vanillaIcon = false; $("dlg-vanilla").showModal(); $("van-search").value = mode === "icon" ? "icon" : ""; drawVanilla(); $("van-search").focus(); }
   function drawVanilla() {
     const q = $("van-search").value.trim().toLowerCase(), grid = $("van-grid"); grid.innerHTML = "";
     const list = G.CLCatalog.textures.filter((t) => !q || t.name.toLowerCase().includes(q) || t.group.toLowerCase().includes(q)).slice(0, 160);
     for (const t of list) grid.append(h("button", { type: "button", title: `${t.path} · ${t.w}×${t.h}${t.nine ? " · 9-slice" : ""}`, onclick: async () => {
       const img = R.clone(await vanillaImg(t)), p = state.p, n = t.nine && t.nine.nineslice_size;
       const ins = n == null ? null : Array.isArray(n) ? (n.length === 2 ? { l: n[0], t: n[1], r: n[0], b: n[1] } : { l: n[0], t: n[1], r: n[2], b: n[3] }) : { l: n, t: n, r: n, b: n };
-      const a = { id: K.uid(), name: B.slug(t.name), type: ins ? "nine" : "sprite", stateSet: "single", folder: "", note: `Copied from vanilla ${t.path}`, status: "draft", w: img.w, h: img.h, nine: ins, density: 1, states: [{ id: K.uid(), name: "default", suffix: "", layers: [K.layer(img, "Vanilla")] }] };
+      const asIcon = !!state.vanillaIcon; state.vanillaIcon = false;
+      if (asIcon && img.w !== img.h) { const sq = G.CLResize.padSquare(img); img.w = sq.w; img.h = sq.h; img.d = sq.d; }
+      const a = { id: K.uid(), name: B.slug(t.name), type: ins && !asIcon ? "nine" : "sprite", stateSet: "single", folder: asIcon ? "icons" : "", note: `Copied from vanilla ${t.path}`, status: "draft", w: img.w, h: img.h, nine: asIcon ? null : ins, density: 1, states: [{ id: K.uid(), name: "default", suffix: "", layers: [K.layer(img, "Vanilla")] }] };
       let i = 2; const base = a.name; while (p.assets.some((x) => x.name === a.name)) a.name = `${base}_${i++}`;
-      p.assets.push(a); const placed = assignToCtx(a.id); commit(true); $("dlg-vanilla").close(); state.artId = a.id; state.stateIdx = 0; renderDesign();
+      p.assets.push(a); const placed = assignToCtx(a.id); commit(true); $("dlg-vanilla").close();
+      if (asIcon) { renderLayout(); toast(`Copied ${t.name} as a new icon.`); return; }
+      state.artId = a.id; state.stateIdx = 0; renderDesign();
       toast(placed ? `Copied ${t.name} into this screen's art and used it for the selected slot.` : `Copied ${t.name}.`);
     } }, h("img", { alt: "", src: "data:image/png;base64," + t.png, loading: "lazy" }), t.name));
     $("van-foot").textContent = `${list.length}${list.length === 160 ? "+" : ""} of ${G.CLCatalog.textures.length} textures (bedrock-samples v1.21.50). Click one to copy it into this screen.`;
@@ -5135,9 +5377,9 @@ body.row-dragging, body.row-dragging * { cursor: row-resize !important; user-sel
     $("btn-undo").onclick = undo; $("btn-redo").onclick = redo;
     $("btn-save").onclick = saveFile; $("btn-open").onclick = () => $("file-open").click();
     $("file-open").onchange = async (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) try { await openFile(f); } catch (err) { toast(err.message); } };
-    $("btn-import").onclick = () => $("file-import").click();
+    $("btn-import").onclick = () => { state.importIcon = false; $("file-import").click(); };
     $("file-import").onchange = (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) importPng(f); };
-    $("btn-vanilla").onclick = openVanilla; $("van-close").onclick = () => $("dlg-vanilla").close(); $("van-search").oninput = drawVanilla;
+    $("btn-vanilla").onclick = () => openVanilla(); $("van-close").onclick = () => { state.vanillaIcon = false; $("dlg-vanilla").close(); }; $("van-search").oninput = drawVanilla;
     $("btn-unique").onclick = () => {
       const a = art(), c = state.artCtx, n = c && B.find(state.p, c.nodeId); if (!a || !n) return;
       const copy = K.cloneKit({ ...state.p, assets: [a] }).assets[0]; copy.id = K.uid(); copy.starter = null; copy.copyOf = a.id;
